@@ -1,0 +1,113 @@
+---
+- name: Resolve SSH user UID and GID for Node-RED volume permissions
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user }}"
+  register: edge_stack_user_passwd
+
+- name: Set edge stack runtime user ids
+  ansible.builtin.set_fact:
+    edge_stack_uid: "{{ edge_stack_user_passwd.ansible_facts.getent_passwd[ansible_user][1] }}"
+    edge_stack_gid: "{{ edge_stack_user_passwd.ansible_facts.getent_passwd[ansible_user][2] }}"
+
+- name: Ensure edge stack base directory exists
+  ansible.builtin.file:
+    path: "{{ edge_stack_path }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Ensure edge stack data directories exist
+  ansible.builtin.file:
+    path: "{{ edge_stack_path }}/{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop: "{{ edge_stack_data_dirs }}"
+
+- name: Deploy Compose files from repository
+  ansible.builtin.copy:
+    src: "{{ edge_stack_local_src }}/{{ item }}"
+    dest: "{{ edge_stack_path }}/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop: "{{ edge_stack_compose_files }}"
+
+- name: Deploy environment example
+  ansible.builtin.copy:
+    src: "{{ edge_stack_local_src }}/env.example"
+    dest: "{{ edge_stack_path }}/env.example"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Check whether local edge stack environment file exists
+  ansible.builtin.stat:
+    path: "{{ edge_stack_local_src }}/.env"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: edge_stack_local_env_file
+
+- name: Deploy edge stack environment file from control machine
+  ansible.builtin.copy:
+    src: "{{ edge_stack_local_src }}/.env"
+    dest: "{{ edge_stack_path }}/.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+  when: edge_stack_local_env_file.stat.exists
+
+- name: Check edge stack data files on host
+  ansible.builtin.stat:
+    path: "{{ edge_stack_path }}/{{ item.src }}"
+  loop: "{{ edge_stack_data_files }}"
+  register: edge_stack_data_file_stats
+
+- name: Install edge stack data files when missing
+  ansible.builtin.copy:
+    src: "{{ edge_stack_local_src }}/{{ item.item.src }}"
+    dest: "{{ edge_stack_path }}/{{ item.item.src }}"
+    owner: >-
+      {{ edge_stack_mosquitto_uid if item.item.owner == 'mosquitto' else edge_stack_uid }}
+    group: >-
+      {{ edge_stack_mosquitto_gid if item.item.owner == 'mosquitto' else edge_stack_gid }}
+    mode: "{{ item.item.mode }}"
+  loop: "{{ edge_stack_data_file_stats.results }}"
+  when: not item.stat.exists
+
+- name: Check whether edge stack environment file exists on host
+  ansible.builtin.stat:
+    path: "{{ edge_stack_path }}/.env"
+  register: edge_stack_env_file
+
+- name: Set Mosquitto data ownership
+  ansible.builtin.file:
+    path: "{{ edge_stack_path }}/data/mosquitto"
+    state: directory
+    owner: "{{ edge_stack_mosquitto_uid }}"
+    group: "{{ edge_stack_mosquitto_gid }}"
+    recurse: true
+
+- name: Set Node-RED data ownership
+  ansible.builtin.file:
+    path: "{{ edge_stack_path }}/data/node-red"
+    state: directory
+    owner: "{{ edge_stack_uid }}"
+    group: "{{ edge_stack_gid }}"
+    recurse: true
+
+- name: Start edge stack services
+  community.docker.docker_compose_v2:
+    project_src: "{{ edge_stack_path }}"
+    env_files:
+      - "{{ edge_stack_path }}/.env"
+    state: present
+    pull: "{{ 'always' if edge_stack_pull_images | bool else 'missing' }}"
+  become: true
+  become_user: "{{ ansible_user }}"
+  when: edge_stack_env_file.stat.exists

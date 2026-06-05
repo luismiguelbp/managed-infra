@@ -1,0 +1,6 @@
+---
+- name: Reboot Raspberry Pi
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+    msg: Reboot triggered by managed-infra infra-reboot
+  tags: [reboot]

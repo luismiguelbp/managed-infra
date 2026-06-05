@@ -1,0 +1,6 @@
+---
+ansible_user: user
+ansible_python_interpreter: /usr/bin/python3
+
+# Set to true to reboot after apt upgrade when /var/run/reboot-required exists.
+reboot_after_upgrade: false

@@ -1,0 +1,10 @@
+---
+- name: Install base packages
+  ansible.builtin.include_role:
+    name: base_packages
+  tags: [packages, base_packages]
+
+- name: Install tools
+  ansible.builtin.include_role:
+    name: tools
+  tags: [packages, tools]

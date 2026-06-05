@@ -1,0 +1,8 @@
+---
+location: site-b
+dns_name: edge-node-2.example.lan
+role: edge
+hardware_model: Raspberry Pi 3 B+
+
+# Optional: move Docker data to a USB SSD
+# edge_stack_path: /mnt/ssd/docker

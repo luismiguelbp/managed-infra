@@ -1,0 +1,15 @@
+---
+firewall_enabled: true
+
+# Allow SSH from anywhere (adjust if you use a bastion or Tailscale-only SSH).
+firewall_allow_ssh: true
+
+# RFC1918 private networks — covers typical home LANs at both sites.
+firewall_trusted_cidrs:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+
+firewall_edge_ports:
+  - 1880
+  - 1883
