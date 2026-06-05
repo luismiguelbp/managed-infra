@@ -1,0 +1,33 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: ${COMPOSE_PROJECT_NAME}_mosquitto
+    hostname: mosquitto
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+      - "9001:9001"
+    volumes:
+      - ${DOCKER_PATH}/data/mosquitto/config:/mosquitto/config:rw
+      - ${DOCKER_PATH}/data/mosquitto/data:/mosquitto/data:rw
+      - ${DOCKER_PATH}/data/mosquitto/log:/mosquitto/log:rw
+    environment:
+      - TZ=${DOCKER_TZ}
+      - MQTT_USER=${MQTT_USER}
+      - MQTT_PASSWORD=${MQTT_PASSWORD}
+    networks:
+      - docker-bridge
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mosquitto_sub -h 127.0.0.1 -u $$MQTT_USER -P $$MQTT_PASSWORD -t '$$SYS/broker/uptime' -C 1 -W 3
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

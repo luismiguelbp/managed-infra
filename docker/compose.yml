@@ -1,0 +1,13 @@
+# Docker Compose - Base Configuration
+# Requires Docker Compose v2.0.0+ (Compose Spec)
+#
+# Available services (add to COMPOSE_FILE in .env):
+#   - compose-mosquitto.yml  : MQTT broker
+#   - compose-node-red.yml   : Flow-based programming
+#
+# Example: COMPOSE_FILE=compose.yml,compose-mosquitto.yml,compose-node-red.yml
+
+networks:
+  docker-bridge:
+    name: docker-bridge
+    driver: bridge
