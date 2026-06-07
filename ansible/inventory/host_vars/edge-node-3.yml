@@ -1,0 +1,22 @@
+---
+location: site-c
+dns_name: edge-node-3.example.lan
+role: edge
+hardware_model: Raspberry Pi 3 B+
+
+# Database and metrics stack (PostgreSQL + Grafana).
+edge_stack_compose_files:
+  - compose.yml
+  - compose-postgresql.yml
+  - compose-grafana.yml
+
+edge_stack_data_dirs:
+  - data/postgresql/data
+  - data/grafana/data
+  - data/grafana/provisioning
+
+edge_stack_data_files: []
+
+firewall_edge_ports:
+  - 3000
+  - 5432

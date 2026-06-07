@@ -3,3 +3,4 @@ tools_packages:
   - git
   - htop
   - mc
+  - rsync

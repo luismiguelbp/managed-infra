@@ -21,6 +21,8 @@ edge_stack_project_name: "{{ inventory_hostname }}"
 
 edge_stack_mosquitto_image: eclipse-mosquitto:latest
 edge_stack_node_red_image: nodered/node-red:latest
+edge_stack_grafana_image: grafana/grafana:latest
+edge_stack_postgresql_image: postgres:16-alpine
 
 # Pull images before starting containers.
 edge_stack_pull_images: true

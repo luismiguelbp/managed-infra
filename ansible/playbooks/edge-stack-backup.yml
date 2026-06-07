@@ -1,0 +1,228 @@
+---
+- name: Backup edge stack data to control machine
+  hosts: raspberry_pis
+  gather_facts: false
+  vars_files:
+    - ../roles/edge_stack/defaults/main.yml
+  vars:
+    host_backup_root: "{{ managed_infra_backup_dest }}/{{ inventory_hostname }}"
+    host_backup_data_root: "{{ host_backup_root }}/data"
+    host_backup_dumps_root: "{{ host_backup_root }}/dumps"
+    remote_env_path: "{{ edge_stack_path }}/.env"
+    remote_postgresql_dump_path: "/tmp/{{ inventory_hostname }}-postgresql.sql"
+    remote_mosquitto_dir: "{{ edge_stack_path }}/data/mosquitto"
+    remote_node_red_dir: "{{ edge_stack_path }}/data/node-red"
+    remote_grafana_dir: "{{ edge_stack_path }}/data/grafana"
+    local_mosquitto_dir: "{{ host_backup_data_root }}/mosquitto"
+    local_node_red_dir: "{{ host_backup_data_root }}/node-red"
+    local_grafana_dir: "{{ host_backup_data_root }}/grafana"
+    local_postgresql_dump: "{{ host_backup_dumps_root }}/postgresql.sql"
+  tasks:
+    - name: Ensure host backup directory exists
+      ansible.builtin.file:
+        path: "{{ host_backup_root }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+
+    - name: Ensure host backup data directory exists
+      ansible.builtin.file:
+        path: "{{ host_backup_data_root }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+
+    - name: Ensure host backup dumps directory exists
+      ansible.builtin.file:
+        path: "{{ host_backup_dumps_root }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+
+    - name: Check whether edge stack environment file exists on host
+      ansible.builtin.stat:
+        path: "{{ remote_env_path }}"
+      register: edge_stack_env_file
+
+    - name: Mirror host environment file
+      ansible.builtin.fetch:
+        src: "{{ remote_env_path }}"
+        dest: "{{ host_backup_root }}/.env"
+        flat: true
+      no_log: true
+      when: edge_stack_env_file.stat.exists
+
+    - name: Lock down mirrored environment file permissions
+      ansible.builtin.file:
+        path: "{{ host_backup_root }}/.env"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+      when:
+        - edge_stack_env_file.stat.exists
+        - not ansible_check_mode
+
+    - name: Remove mirrored environment file when absent on host
+      ansible.builtin.file:
+        path: "{{ host_backup_root }}/.env"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: not edge_stack_env_file.stat.exists
+
+    - name: Check Mosquitto data directory on host
+      ansible.builtin.stat:
+        path: "{{ remote_mosquitto_dir }}"
+      register: remote_mosquitto_dir_stat
+      when: "'compose-mosquitto.yml' in edge_stack_compose_files"
+
+    - name: Mirror Mosquitto data directory
+      ansible.posix.synchronize:
+        mode: pull
+        src: "{{ remote_mosquitto_dir }}/"
+        dest: "{{ local_mosquitto_dir }}/"
+        archive: true
+        delete: true
+        rsync_opts:
+          - "--exclude=log/"
+      when:
+        - "'compose-mosquitto.yml' in edge_stack_compose_files"
+        - remote_mosquitto_dir_stat.stat.exists
+
+    - name: Remove local Mosquitto mirror when service not present
+      ansible.builtin.file:
+        path: "{{ local_mosquitto_dir }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: "'compose-mosquitto.yml' not in edge_stack_compose_files"
+
+    - name: Check Node-RED data directory on host
+      ansible.builtin.stat:
+        path: "{{ remote_node_red_dir }}"
+      register: remote_node_red_dir_stat
+      when: "'compose-node-red.yml' in edge_stack_compose_files"
+
+    - name: Mirror Node-RED data directory
+      ansible.posix.synchronize:
+        mode: pull
+        src: "{{ remote_node_red_dir }}/"
+        dest: "{{ local_node_red_dir }}/"
+        archive: true
+        delete: true
+      when:
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - remote_node_red_dir_stat.stat.exists
+
+    - name: Remove local Node-RED mirror when service not present
+      ansible.builtin.file:
+        path: "{{ local_node_red_dir }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: "'compose-node-red.yml' not in edge_stack_compose_files"
+
+    - name: Check Grafana data directory on host
+      ansible.builtin.stat:
+        path: "{{ remote_grafana_dir }}"
+      register: remote_grafana_dir_stat
+      when: "'compose-grafana.yml' in edge_stack_compose_files"
+
+    - name: Mirror Grafana data directory
+      ansible.posix.synchronize:
+        mode: pull
+        src: "{{ remote_grafana_dir }}/"
+        dest: "{{ local_grafana_dir }}/"
+        archive: true
+        delete: true
+      when:
+        - "'compose-grafana.yml' in edge_stack_compose_files"
+        - remote_grafana_dir_stat.stat.exists
+
+    - name: Remove local Grafana mirror when service not present
+      ansible.builtin.file:
+        path: "{{ local_grafana_dir }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: "'compose-grafana.yml' not in edge_stack_compose_files"
+
+    - name: Check PostgreSQL container state
+      ansible.builtin.command: docker compose ps --services --filter status=running
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: docker_running_services
+      changed_when: false
+      failed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when:
+        - "'compose-postgresql.yml' in edge_stack_compose_files"
+        - edge_stack_env_file.stat.exists
+
+    - name: Export PostgreSQL dump on host
+      ansible.builtin.shell: >-
+        docker compose exec -T postgresql sh -c
+        'pg_dump -U "${POSTGRES_USER:-admin}" "${POSTGRES_DB:-automation}"'
+        > "{{ remote_postgresql_dump_path }}"
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: postgresql_dump_result
+      changed_when: false
+      no_log: true
+      become: true
+      become_user: "{{ ansible_user }}"
+      when:
+        - "'compose-postgresql.yml' in edge_stack_compose_files"
+        - edge_stack_env_file.stat.exists
+        - docker_running_services is defined
+        - "'postgresql' in docker_running_services.stdout_lines"
+
+    - name: Fetch PostgreSQL dump file
+      ansible.builtin.fetch:
+        src: "{{ remote_postgresql_dump_path }}"
+        dest: "{{ local_postgresql_dump }}"
+        flat: true
+      no_log: true
+      when:
+        - postgresql_dump_result is defined
+        - (postgresql_dump_result.rc | default(1)) == 0
+
+    - name: Remove temporary PostgreSQL dump file from host
+      ansible.builtin.file:
+        path: "{{ remote_postgresql_dump_path }}"
+        state: absent
+      when:
+        - postgresql_dump_result is defined
+        - (postgresql_dump_result.rc | default(1)) == 0
+
+    - name: Remove local PostgreSQL dump when service not present
+      ansible.builtin.file:
+        path: "{{ local_postgresql_dump }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: "'compose-postgresql.yml' not in edge_stack_compose_files"
+
+    - name: Write host backup manifest
+      ansible.builtin.copy:
+        dest: "{{ host_backup_root }}/manifest.json"
+        mode: "0644"
+        content: |
+          {
+            "host": "{{ inventory_hostname }}",
+            "edge_stack_path": "{{ edge_stack_path }}",
+            "last_backup": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+            "compose_files": {{ edge_stack_compose_files | to_json }},
+            "services": {
+              "mosquitto": {{ ('compose-mosquitto.yml' in edge_stack_compose_files) | to_json }},
+              "node_red": {{ ('compose-node-red.yml' in edge_stack_compose_files) | to_json }},
+              "grafana": {{ ('compose-grafana.yml' in edge_stack_compose_files) | to_json }},
+              "postgresql": {{ ('compose-postgresql.yml' in edge_stack_compose_files) | to_json }}
+            }
+          }
+      delegate_to: localhost
+      become: false
