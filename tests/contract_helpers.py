@@ -7,6 +7,7 @@ DOCKER_DIR = PROJECT_ROOT / "docker"
 ANSIBLE_EDGE_STACK_DEFAULTS = (
     PROJECT_ROOT / "ansible" / "roles" / "edge_stack" / "defaults" / "main.yml"
 )
+TEMPLATE_HOST_VARS_DIR = PROJECT_ROOT / "ansible" / "inventory" / "host_vars"
 
 # Created manually on each Pi; not shipped from the repository.
 MANUAL_EDGE_STACK_DATA_FILES = frozenset({"data/mosquitto/config/passwords_file"})
@@ -43,6 +44,28 @@ def parse_ansible_scalar(key: str) -> str:
         if line.startswith(f"{key}:"):
             return line.split(":", 1)[1].strip()
     raise KeyError(key)
+
+
+def parse_host_var_list(host_vars_file: Path, key: str) -> list[str] | None:
+    """Return a dash-list value from a host_vars YAML file, or None when unset."""
+    lines = host_vars_file.read_text().splitlines()
+    items: list[str] = []
+    in_block = False
+
+    for line in lines:
+        if line.startswith(f"{key}:"):
+            in_block = True
+            continue
+        if not in_block:
+            continue
+        if line and not line[0].isspace():
+            break
+        stripped = line.strip()
+        if not stripped.startswith("- "):
+            continue
+        items.append(stripped[2:].strip())
+
+    return items or None
 
 
 def parse_env_example_var(key: str) -> str:

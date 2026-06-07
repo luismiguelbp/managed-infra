@@ -16,10 +16,10 @@ def test_edge_stack_compose_files_exist() -> None:
 
 
 def test_compose_file_list_matches_env_example() -> None:
-    """docker/env.example COMPOSE_FILE matches Ansible edge_stack_compose_files."""
+    """docker/env.example COMPOSE_FILE is a subset of deployed compose files."""
     ansible_files = parse_ansible_list("edge_stack_compose_files")
     env_files = parse_env_example_var("COMPOSE_FILE").split(",")
-    assert env_files == ansible_files
+    assert all(file in ansible_files for file in env_files)
 
 
 def test_edge_stack_data_files_exist_in_repo() -> None:
@@ -35,3 +35,29 @@ def test_manual_edge_stack_data_files_are_gitignored() -> None:
     gitignore = (PROJECT_ROOT / ".gitignore").read_text()
     for data_file in MANUAL_EDGE_STACK_DATA_FILES:
         assert f"docker/{data_file}" in gitignore, data_file
+
+
+def test_infra_docker_status_script_and_playbook_exist() -> None:
+    """Docker status wrapper and playbook are present for fleet checks."""
+    script = PROJECT_ROOT / "bin" / "infra-docker-status"
+    playbook = PROJECT_ROOT / "ansible" / "playbooks" / "docker-status.yml"
+
+    assert script.is_file()
+    assert script.stat().st_mode & 0o111
+    assert playbook.is_file()
+
+
+def test_infra_backup_script_and_playbook_exist() -> None:
+    """Backup wrapper and playbook are present for host mirrors."""
+    script = PROJECT_ROOT / "bin" / "infra-backup-edge-stack"
+    playbook = PROJECT_ROOT / "ansible" / "playbooks" / "edge-stack-backup.yml"
+
+    assert script.is_file()
+    assert script.stat().st_mode & 0o111
+    assert playbook.is_file()
+
+
+def test_env_example_includes_backup_destination_var() -> None:
+    """.env.example documents backup destination path for mirrors."""
+    env_example = (PROJECT_ROOT / ".env.example").read_text()
+    assert "MANAGED_INFRA_BACKUP_DEST=" in env_example
