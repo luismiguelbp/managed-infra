@@ -4,4 +4,5 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 ansible_cd
 ensure_ansible
-exec ansible "$@"
+verify_managed_infra_config_src
+exec ansible -i "$MANAGED_INFRA_INVENTORY_FILE" "$@"

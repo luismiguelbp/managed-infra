@@ -4,4 +4,11 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 ansible_cd
 ensure_ansible
-exec ansible-playbook "$@"
+
+verify_managed_infra_config_src
+extra_args=(
+  -i "$MANAGED_INFRA_INVENTORY_FILE"
+  -e "edge_stack_local_src=$MANAGED_INFRA_DOCKER_SRC"
+)
+
+exec ansible-playbook "${extra_args[@]}" "$@"

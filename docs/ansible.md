@@ -180,11 +180,45 @@ Package roles:
 
 Compose files live in `docker/` at the repo root. The role copies them to `/opt/docker` on each Pi.
 
+### External config source (required)
+
+This repository holds **templates** (`docker/`, `ansible/inventory/`). Do not deploy them to Pis.
+
+Keep final configs in a separate clone (for example `managed-infra-config-src`). Set the path in a gitignored `.env` at the repo root:
+
+```bash
+cp .env.example .env
+# MANAGED_INFRA_CONFIG_SRC=/path/to/managed-infra-config-src
+```
+
+Expected layout in `MANAGED_INFRA_CONFIG_SRC`:
+
+```
+managed-infra-config-src/
+├── ansible/inventory/
+│   ├── hosts.yml
+│   ├── host_vars/
+│   └── group_vars/          # e.g. raspberry_pis.yml (ansible_user)
+└── docker/
+    ├── compose*.yml
+    ├── env.example
+    ├── .env                 # secrets; copied to each Pi when present
+    └── data/                # mosquitto.conf, settings.js, etc.
+```
+
+Before every Ansible command (`bin/ansible-playbook`, `bin/ansible-run`, `bin/infra-list-hosts`), scripts verify that `MANAGED_INFRA_CONFIG_SRC` is set, paths are not this repo's templates, and required `docker/` files exist.
+
+**Deploy flow:** Ansible reads from `MANAGED_INFRA_CONFIG_SRC`, then the `edge_stack` role **copies** those files to `/opt/docker` on each Pi (Compose files, `env.example`, optional `.env`, and data files when missing on the host). Inventory targets come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml`.
+
+Override per run with `-i` or `-e edge_stack_local_src=...` (later flags win; pre-flight still validates `MANAGED_INFRA_CONFIG_SRC`).
+
+Keep secrets in the external clone outside this workspace. Use `.cursorignore` in both repos.
+
 ### Edge stack credentials
 
 Secrets are created manually on each Pi (not in Ansible vars). See [docker/README.md](../docker/README.md#credentials).
 
-Ansible deploys `env.example`. When `docker/.env` exists on the control machine it is copied to `/opt/docker/.env` on each host. Containers start only when `.env` exists on the host.
+Ansible deploys `env.example`. When `docker/.env` exists on the control machine (under the repo or under `MANAGED_INFRA_CONFIG_SRC`) it is copied to `/opt/docker/.env` on each host. Containers start only when `.env` exists on the host.
 
 ### Firewall role
 

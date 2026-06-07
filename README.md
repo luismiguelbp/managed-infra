@@ -20,6 +20,7 @@ Infrastructure-as-code for a small Raspberry Pi fleet. Ansible and Docker Compos
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # required: set MANAGED_INFRA_CONFIG_SRC (external clone with real docker/ configs)
 ```
 
 ## Test
@@ -46,6 +47,6 @@ Edge stack credentials are set manually on each Pi. See [docker/README.md](docke
 
 ## Workflow
 
-1. Cursor helps write playbooks, Compose files, and configs in this repo.
-2. You review the changes.
-3. You run Ansible via `bin/` helper scripts from your Mac.
+1. Develop playbooks and **templates** in this repo (`docker/`, `ansible/inventory/` are not deployed as-is).
+2. Maintain final configs (hosts, secrets, tuned `mosquitto.conf`, etc.) in `MANAGED_INFRA_CONFIG_SRC` (see `.env.example`).
+3. Run `bin/` helpers — they verify the external paths, then Ansible copies `docker/` files to `/opt/docker` on each Pi.
