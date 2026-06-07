@@ -6,9 +6,12 @@ ansible_cd
 ensure_ansible
 
 verify_managed_infra_config_src
+verify_managed_infra_backup_dest
+
 extra_args=(
   -i "$MANAGED_INFRA_INVENTORY_FILE"
   -e "edge_stack_local_src=$MANAGED_INFRA_DOCKER_SRC"
+  -e "managed_infra_backup_dest=$MANAGED_INFRA_BACKUP_DEST"
 )
 
-exec ansible-playbook "${extra_args[@]}" "$@"
+exec ansible-playbook "${extra_args[@]}" playbooks/edge-stack-backup.yml "$@"

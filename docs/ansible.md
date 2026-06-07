@@ -8,12 +8,27 @@ Manage the Raspberry Pi fleet from your Mac. Inventory is the source of truth fo
 |------|-----|----------|
 | edge-node-1 | edge-node-1.example.lan | site-a |
 | edge-node-2 | edge-node-2.example.lan | site-b |
+| edge-node-3 | edge-node-3.example.lan | site-c |
 
 Files:
 
 - `ansible/inventory/hosts.yml` — hosts and `ansible_host`
-- `ansible/inventory/host_vars/` — per-host metadata
+- `ansible/inventory/host_vars/` — per-host metadata and edge stack profile
 - `ansible/inventory/group_vars/raspberry_pis.yml` — shared SSH user and defaults
+
+### Edge stack profiles (template inventory)
+
+Each host declares which Compose services it runs via `edge_stack_compose_files` and matching `edge_stack_data_dirs` in `host_vars/`. The `edge_stack` role copies only those files, creates the data dirs, opens the right firewall ports, and sets `COMPOSE_FILE` on each Pi from the host profile.
+
+| Host | Stack | Compose services |
+|------|-------|------------------|
+| edge-node-1 | Full (lab) | Mosquitto, Node-RED, PostgreSQL, Grafana |
+| edge-node-2 | MQTT edge | Mosquitto, Node-RED |
+| edge-node-3 | Database / metrics | PostgreSQL, Grafana |
+
+Production inventory in `MANAGED_INFRA_CONFIG_SRC` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
+
+Hosts without overrides inherit role defaults (MQTT edge). Database hosts also set `edge_stack_data_files: []` and `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432).
 
 ## Prerequisites
 
@@ -32,6 +47,11 @@ Host edge-node-1
 
 Host edge-node-2
     HostName edge-node-2.example.lan
+    User user
+    IdentityFile ~/.ssh/id_ed25519
+
+Host edge-node-3
+    HostName edge-node-3.example.lan
     User user
     IdentityFile ~/.ssh/id_ed25519
 ```
@@ -73,10 +93,53 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-install-tools` | Install tools only (`--tags tools`) |
 | `bin/infra-install-docker` | Docker install only (`--tags docker`) |
 | `bin/infra-deploy-edge-stack` | Deploy Mosquitto + Node-RED (`--tags edge_stack`) |
+| `bin/infra-docker-status` | Docker daemon, compose, uptime, and disk status |
+| `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP_DEST` |
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
 | `bin/infra-reboot` | Reboot all Pis (`common` role, `--tags reboot`) |
 
 Task helpers accept the same extra flags as Ansible (`--check`, `--limit`, `-e`, etc.).
+
+## Fleet status
+
+Check connectivity and Docker/system status:
+
+```bash
+./bin/infra-ping
+./bin/infra-docker-status
+```
+
+One host:
+
+```bash
+./bin/infra-docker-status --limit edge-node-1
+```
+
+## Backup edge stack data
+
+Set both required variables in gitignored `.env`:
+
+```bash
+cp .env.example .env
+# MANAGED_INFRA_CONFIG_SRC=/path/to/managed-infra-config-src
+# MANAGED_INFRA_BACKUP_DEST=/path/on/your/mac/for/host-mirrors
+```
+
+Install collections and tools prerequisites:
+
+```bash
+ansible-galaxy collection install -r ansible/requirements.yml
+./bin/infra-install-tools
+```
+
+Run backup:
+
+```bash
+./bin/infra-backup-edge-stack
+./bin/infra-backup-edge-stack --limit edge-node-1
+```
+
+Each run refreshes `MANAGED_INFRA_BACKUP_DEST/<inventory_hostname>/` in place (no timestamp folders). Do not commit mirrored backup data or `.env` files.
 
 ## Test connectivity
 
@@ -208,7 +271,7 @@ managed-infra-config-src/
 
 Before every Ansible command (`bin/ansible-playbook`, `bin/ansible-run`, `bin/infra-list-hosts`), scripts verify that `MANAGED_INFRA_CONFIG_SRC` is set, paths are not this repo's templates, and required `docker/` files exist.
 
-**Deploy flow:** Ansible reads from `MANAGED_INFRA_CONFIG_SRC`, then the `edge_stack` role **copies** those files to `/opt/docker` on each Pi (Compose files, `env.example`, optional `.env`, and data files when missing on the host). Inventory targets come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml`.
+**Deploy flow:** Ansible reads from `MANAGED_INFRA_CONFIG_SRC`, then the `edge_stack` role **copies** those files to `/opt/docker` on each Pi (Compose files, `env.example`, optional `.env`, and data files when missing on the host). Per-host `edge_stack_compose_files` in inventory sets `COMPOSE_FILE` and `COMPOSE_PROJECT_NAME` in `/opt/docker/.env` on each run (secrets in `.env` are left unchanged). Inventory targets come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml`.
 
 Override per run with `-i` or `-e edge_stack_local_src=...` (later flags win; pre-flight still validates `MANAGED_INFRA_CONFIG_SRC`).
 

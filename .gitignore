@@ -24,3 +24,9 @@ docker/data/mosquitto/log/*
 docker/data/node-red/data/*
 !docker/data/node-red/data/.gitkeep
 !docker/data/node-red/data/settings.js
+docker/data/postgresql/data/*
+!docker/data/postgresql/data/.gitkeep
+docker/data/grafana/data/*
+!docker/data/grafana/data/.gitkeep
+docker/data/grafana/provisioning/*
+!docker/data/grafana/provisioning/.gitkeep

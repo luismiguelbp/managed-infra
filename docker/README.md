@@ -1,13 +1,17 @@
 # Edge stack (Docker Compose)
 
-Mosquitto and Node-RED for each Raspberry Pi edge node. Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
+Mosquitto and Node-RED on MQTT edge nodes; Grafana and PostgreSQL on the metrics node (`edge-node-3` / site-c). Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
 
 ## Services
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Mosquitto | 1883, 8883, 9001 | MQTT broker (9001 = WebSockets) |
-| Node-RED | 1880 | Flow editor and runtime |
+| Service | Port | Hosts | Purpose |
+|---------|------|-------|---------|
+| Mosquitto | 1883, 8883, 9001 | edge-node-1, edge-node-2 | MQTT broker (9001 = WebSockets) |
+| Node-RED | 1880 | edge-node-1, edge-node-2 | Flow editor and runtime |
+| PostgreSQL | 5432 | edge-node-1, edge-node-3 | Database (Grafana backend) |
+| Grafana | 3000 | edge-node-1, edge-node-3 | Dashboards |
+
+`edge-node-1` runs the full stack (lab template). `edge-node-2` is MQTT-only. `edge-node-3` is database / metrics only. See per-host `edge_stack_compose_files` in `ansible/inventory/host_vars/`.
 
 ## Layout
 

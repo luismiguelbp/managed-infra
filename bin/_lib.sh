@@ -2,7 +2,9 @@
 # Shared helpers for bin/ scripts. Source from other scripts; do not run directly.
 
 project_root() {
-  cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  cd "$script_dir/.." && pwd
 }
 
 ansible_cd() {
@@ -36,6 +38,8 @@ EDGE_STACK_REQUIRED_FILES=(
   compose.yml
   compose-mosquitto.yml
   compose-node-red.yml
+  compose-postgresql.yml
+  compose-grafana.yml
   env.example
 )
 
@@ -98,4 +102,40 @@ verify_managed_infra_config_src() {
 
   echo "Using inventory from: $(dirname "$inventory_src")" >&2
   echo "Using edge stack configs from: $docker_src" >&2
+}
+
+verify_managed_infra_backup_dest() {
+  load_project_env
+
+  if [[ -z "${MANAGED_INFRA_BACKUP_DEST:-}" ]]; then
+    echo "MANAGED_INFRA_BACKUP_DEST is not set. Add it to .env (see .env.example)." >&2
+    exit 1
+  fi
+
+  local backup_dest="$MANAGED_INFRA_BACKUP_DEST"
+  if [[ "$backup_dest" == "~"* ]]; then
+    backup_dest="${HOME}${backup_dest:1}"
+  fi
+
+  local backup_parent
+  backup_parent="$(dirname "$backup_dest")"
+  if [[ ! -d "$backup_parent" ]]; then
+    echo "Parent directory for MANAGED_INFRA_BACKUP_DEST does not exist: $backup_parent" >&2
+    exit 1
+  fi
+
+  mkdir -p "$backup_dest"
+
+  MANAGED_INFRA_BACKUP_DEST="$(cd "$backup_dest" && pwd)"
+
+  local repo_root
+  repo_root="$(project_root)"
+  case "$MANAGED_INFRA_BACKUP_DEST" in
+    "$repo_root"|"$repo_root"/*)
+      echo "MANAGED_INFRA_BACKUP_DEST must be outside this git repository: $repo_root" >&2
+      exit 1
+      ;;
+  esac
+
+  echo "Using backup destination: $MANAGED_INFRA_BACKUP_DEST" >&2
 }

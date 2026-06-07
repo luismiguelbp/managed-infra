@@ -21,6 +21,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # required: set MANAGED_INFRA_CONFIG_SRC (external clone with real docker/ configs)
+# optional for backups: set MANAGED_INFRA_BACKUP_DEST (local mirror root on your Mac)
 ```
 
 ## Test
@@ -37,6 +38,8 @@ pytest
 ./bin/infra-bootstrap --check
 ./bin/infra-bootstrap
 ./bin/infra-deploy-edge-stack
+./bin/infra-docker-status
+./bin/infra-backup-edge-stack
 ```
 
 See [docs/ansible.md](docs/ansible.md) for all helper scripts, limits, and options.
