@@ -2,10 +2,13 @@
 # Requires Docker Compose v2.0.0+ (Compose Spec)
 #
 # Available services (add to COMPOSE_FILE in .env):
-#   - compose-mosquitto.yml  : MQTT broker
-#   - compose-node-red.yml   : Flow-based programming
+#   - compose-mosquitto.yml    : MQTT broker
+#   - compose-node-red.yml     : Flow-based programming
+#   - compose-postgresql.yml   : Database (Grafana backend)
+#   - compose-grafana.yml      : Dashboards
 #
 # Example: COMPOSE_FILE=compose.yml,compose-mosquitto.yml,compose-node-red.yml
+# Database stack: COMPOSE_FILE=compose.yml,compose-postgresql.yml,compose-grafana.yml
 
 networks:
   docker-bridge:
