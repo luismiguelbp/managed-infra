@@ -5,6 +5,8 @@
   vars_files:
     - ../roles/edge_stack/defaults/main.yml
   vars:
+    # Set -e edge_stack_backup_stop_grafana=true for a consistent Grafana mirror (brief downtime).
+    edge_stack_backup_stop_grafana: false
     host_backup_root: "{{ managed_infra_backup_dest }}/{{ inventory_hostname }}"
     host_backup_data_root: "{{ host_backup_root }}/data"
     host_backup_dumps_root: "{{ host_backup_root }}/dumps"
@@ -131,6 +133,20 @@
       register: remote_grafana_dir_stat
       when: "'compose-grafana.yml' in edge_stack_compose_files"
 
+    - name: Stop Grafana for consistent backup
+      ansible.builtin.command: docker compose stop grafana
+      args:
+        chdir: "{{ edge_stack_path }}"
+      changed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when:
+        - edge_stack_backup_stop_grafana | bool
+        - "'compose-grafana.yml' in edge_stack_compose_files"
+        - edge_stack_env_file.stat.exists
+        - remote_grafana_dir_stat is defined
+        - remote_grafana_dir_stat.stat.exists
+
     - name: Mirror Grafana data directory
       ansible.posix.synchronize:
         mode: pull
@@ -140,6 +156,20 @@
         delete: true
       when:
         - "'compose-grafana.yml' in edge_stack_compose_files"
+        - remote_grafana_dir_stat.stat.exists
+
+    - name: Start Grafana after backup
+      ansible.builtin.command: docker compose start grafana
+      args:
+        chdir: "{{ edge_stack_path }}"
+      changed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when:
+        - edge_stack_backup_stop_grafana | bool
+        - "'compose-grafana.yml' in edge_stack_compose_files"
+        - edge_stack_env_file.stat.exists
+        - remote_grafana_dir_stat is defined
         - remote_grafana_dir_stat.stat.exists
 
     - name: Remove local Grafana mirror when service not present
@@ -206,6 +236,38 @@
       delegate_to: localhost
       become: false
       when: "'compose-postgresql.yml' not in edge_stack_compose_files"
+
+    - name: Remove local PostgreSQL dump when edge stack is not deployed
+      ansible.builtin.file:
+        path: "{{ local_postgresql_dump }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when:
+        - "'compose-postgresql.yml' in edge_stack_compose_files"
+        - not edge_stack_env_file.stat.exists
+
+    - name: Remove stale local PostgreSQL dump when container is not running
+      ansible.builtin.file:
+        path: "{{ local_postgresql_dump }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when:
+        - "'compose-postgresql.yml' in edge_stack_compose_files"
+        - edge_stack_env_file.stat.exists
+        - docker_running_services is defined
+        - "'postgresql' not in docker_running_services.stdout_lines"
+
+    - name: Remove stale local PostgreSQL dump when export failed
+      ansible.builtin.file:
+        path: "{{ local_postgresql_dump }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when:
+        - postgresql_dump_result is defined
+        - (postgresql_dump_result.rc | default(1)) != 0
 
     - name: Write host backup manifest
       ansible.builtin.copy:

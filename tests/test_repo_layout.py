@@ -57,6 +57,16 @@ def test_infra_backup_script_and_playbook_exist() -> None:
     assert playbook.is_file()
 
 
+def test_infra_restore_script_and_playbook_exist() -> None:
+    """Restore wrapper and playbook are present for manual disaster recovery."""
+    script = PROJECT_ROOT / "bin" / "infra-restore-edge-stack"
+    playbook = PROJECT_ROOT / "ansible" / "playbooks" / "edge-stack-restore.yml"
+
+    assert script.is_file()
+    assert script.stat().st_mode & 0o111
+    assert playbook.is_file()
+
+
 def test_env_example_includes_backup_destination_var() -> None:
     """.env.example documents backup destination path for mirrors."""
     env_example = (PROJECT_ROOT / ".env.example").read_text()

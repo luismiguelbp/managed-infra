@@ -1,17 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "$0")" && pwd)/_lib.sh"
-ansible_cd
-ensure_ansible
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/bin/_lib.sh"
 
-verify_managed_infra_config_src
 verify_managed_infra_backup_dest
 
-extra_args=(
-  -i "$MANAGED_INFRA_INVENTORY_FILE"
-  -e "edge_stack_local_src=$MANAGED_INFRA_DOCKER_SRC"
-  -e "managed_infra_backup_dest=$MANAGED_INFRA_BACKUP_DEST"
-)
-
-exec ansible-playbook "${extra_args[@]}" playbooks/edge-stack-backup.yml "$@"
+exec "$ROOT/bin/ansible-playbook" \
+  -e "managed_infra_backup_dest=$MANAGED_INFRA_BACKUP_DEST" \
+  playbooks/edge-stack-backup.yml "$@"

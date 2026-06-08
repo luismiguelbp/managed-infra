@@ -1,6 +1,6 @@
 ---
 name: infra-deploy
-description: Deploy and operate the managed-infra Raspberry Pi fleet via bin/ scripts and Ansible. Use when running infra-bootstrap, infra-deploy-edge-stack, infra-reboot, fleet status checks, MANAGED_INFRA_CONFIG_SRC, Ansible playbooks, or provisioning Mosquitto and Node-RED on Pis.
+description: Deploy and operate the managed-infra Raspberry Pi fleet via bin/ scripts and Ansible. Use when running infra-bootstrap, infra-deploy-edge-stack, infra-backup-edge-stack, infra-restore-edge-stack, infra-reboot, fleet status checks, MANAGED_INFRA_CONFIG_SRC, Ansible playbooks, or provisioning Mosquitto and Node-RED on Pis.
 ---
 
 # managed-infra fleet deploy
@@ -35,6 +35,7 @@ Set `MANAGED_INFRA_CONFIG_SRC` in gitignored `.env` (see `.env.example`). Every 
 | Edge stack only (Compose, Mosquitto, Node-RED) | `./bin/infra-deploy-edge-stack` |
 | Docker + system status | `./bin/infra-docker-status` |
 | Backup edge stack data to Mac | `./bin/infra-backup-edge-stack` |
+| Restore backup mirror to one host | `./bin/infra-restore-edge-stack` |
 | Reboot fleet | `./bin/infra-reboot` |
 | Connectivity check | `./bin/infra-ping` |
 | List inventory hosts | `./bin/infra-list-hosts` |
@@ -81,6 +82,17 @@ Set `MANAGED_INFRA_BACKUP_DEST` in gitignored `.env`, then run:
 ```
 
 Each run mirrors runtime files into `MANAGED_INFRA_BACKUP_DEST/<host>/` (no timestamp subfolders).
+
+## Restore backup mirrors
+
+Manual disaster recovery only — not part of bootstrap or deploy.
+
+```bash
+./bin/infra-restore-edge-stack --limit edge-node-1
+./bin/infra-restore-edge-stack --limit edge-node-2 -e edge_stack_restore_source=edge-node-1
+```
+
+Requires `--limit` with exactly one host. Default source folder matches the limited host; override with `edge_stack_restore_source`. Restores `data/` and `dumps/postgresql.sql` only unless `-e edge_stack_restore_env=true` (reconciles `COMPOSE_FILE` and `COMPOSE_PROJECT_NAME` for the target).
 
 ## Credentials (manual, not in Ansible vars)
 

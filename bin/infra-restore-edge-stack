@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/bin/_lib.sh"
+
+verify_managed_infra_backup_dest
+
+limit_host="$(require_ansible_single_host_limit "$@")"
+restore_source="$(resolve_edge_stack_restore_source "$limit_host" "$@")"
+verify_backup_mirror_exists "$restore_source"
+
+filtered_args=()
+while IFS= read -r -d '' arg; do
+  filtered_args+=("$arg")
+done < <(filter_ansible_args_without_limit "$@")
+
+exec "$ROOT/bin/ansible-playbook" \
+  -e "managed_infra_backup_dest=$MANAGED_INFRA_BACKUP_DEST" \
+  -e "edge_stack_restore_source=$restore_source" \
+  playbooks/edge-stack-restore.yml \
+  --limit "$limit_host" \
+  "${filtered_args[@]}"

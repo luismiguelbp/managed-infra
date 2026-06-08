@@ -95,6 +95,7 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-deploy-edge-stack` | Deploy Mosquitto + Node-RED (`--tags edge_stack`) |
 | `bin/infra-docker-status` | Docker daemon, compose, uptime, and disk status |
 | `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP_DEST` |
+| `bin/infra-restore-edge-stack` | Push backup mirror to one host (`--limit` required) |
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
 | `bin/infra-reboot` | Reboot all Pis (`common` role, `--tags reboot`) |
 
@@ -140,6 +141,37 @@ Run backup:
 ```
 
 Each run refreshes `MANAGED_INFRA_BACKUP_DEST/<inventory_hostname>/` in place (no timestamp folders). Do not commit mirrored backup data or `.env` files.
+
+For a consistent Grafana mirror (brief downtime on database hosts), stop Grafana before rsync:
+
+```bash
+./bin/infra-backup-edge-stack -e edge_stack_backup_stop_grafana=true
+```
+
+Stale `dumps/postgresql.sql` files are removed when PostgreSQL is in the host profile but the container is not running or the dump fails.
+
+## Restore edge stack data
+
+Manual disaster recovery only. Bootstrap the target host first, then restore from a backup mirror.
+
+```bash
+./bin/infra-restore-edge-stack --limit edge-node-1
+./bin/infra-restore-edge-stack --limit edge-node-2 -e edge_stack_restore_source=edge-node-1
+```
+
+The script refuses to run without `--limit` naming exactly one inventory host. By default it restores `data/` directories and imports `dumps/postgresql.sql`; it does not copy `.env` unless requested.
+
+Optional flags:
+
+```bash
+# Copy mirrored .env and reconcile COMPOSE_FILE / COMPOSE_PROJECT_NAME for the target
+./bin/infra-restore-edge-stack --limit edge-node-1 -e edge_stack_restore_env=true
+
+# Keep services running during restore (default stops compose before restore)
+./bin/infra-restore-edge-stack --limit edge-node-3 -e edge_stack_restore_stop_services=false
+```
+
+The playbook compares `manifest.json` services with the target `edge_stack_compose_files` profile and skips incompatible services with warnings.
 
 ## Test connectivity
 
