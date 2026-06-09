@@ -2,14 +2,14 @@
 
 ## Overview
 
-Check fleet health on all configured Pis, or on one host when a hostname is passed (e.g. `/infra-status edge-node-1`).
+Check fleet health on all configured Linux hosts, or on one host when a hostname is passed (e.g. `/infra-status edge-node-1`).
 
 ## Host parameter
 
 - **No parameter** → status for all hosts in inventory
 - **One hostname** → add `--limit <hostname>` (inventory name from `./bin/infra-list-hosts`, not DNS)
 
-Examples in this repo use template names (`edge-node-1`, `edge-node-2`). Live inventory comes from `MANAGED_INFRA_CONFIG_SRC` (see `.cursor/rules/templates-only.mdc`).
+Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG_SRC` (see `.cursor/rules/templates-only.mdc`).
 
 ## Steps
 

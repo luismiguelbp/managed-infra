@@ -34,7 +34,7 @@ Hosts without overrides inherit role defaults (MQTT edge). Database hosts also s
 
 - Ansible on the Mac: `brew install ansible`
 - Ansible collections (once): `ansible-galaxy collection install -r ansible/requirements.yml`
-- SSH key access to each Pi
+- SSH key access to each Pi — [SSH keys: Mac to Linux](ssh-keys-mac-to-linux.md)
 - Pis reachable at their DNS names from the Mac (local DNS or `/etc/hosts`)
 
 Optional `~/.ssh/config` entries can use the same host aliases as inventory:
@@ -66,6 +66,8 @@ On each Pi, allow `user` to sudo without a password for automation. Create `/etc
 sudo visudo -f /etc/sudoers.d/ansible
 ```
 
+Or use a plain editor (syntax is not validated): `sudo nano /etc/sudoers.d/ansible`
+
 Add:
 
 ```
@@ -92,7 +94,7 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-install-base-packages` | Install base packages only (`--tags base_packages`) |
 | `bin/infra-install-tools` | Install tools only (`--tags tools`) |
 | `bin/infra-install-docker` | Docker install only (`--tags docker`) |
-| `bin/infra-deploy-edge-stack` | Deploy Mosquitto + Node-RED (`--tags edge_stack`) |
+| `bin/infra-deploy-edge-stack` | Deploy edge stack Compose services (`--tags edge_stack`) |
 | `bin/infra-docker-status` | Docker daemon, compose, uptime, and disk status |
 | `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP_DEST` |
 | `bin/infra-restore-edge-stack` | Push backup mirror to one host (`--limit` required) |
@@ -101,11 +103,12 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 
 Task helpers accept the same extra flags as Ansible (`--check`, `--limit`, `-e`, etc.).
 
-## Fleet status
+## Fleet status and connectivity
 
-Check connectivity and Docker/system status:
+List inventory, check SSH, and inspect Docker/system status:
 
 ```bash
+./bin/infra-list-hosts
 ./bin/infra-ping
 ./bin/infra-docker-status
 ```
@@ -113,8 +116,11 @@ Check connectivity and Docker/system status:
 One host:
 
 ```bash
+./bin/infra-ping --limit edge-node-1
 ./bin/infra-docker-status --limit edge-node-1
 ```
+
+Until sudoers is configured on every host, ping-only checks can skip escalation: `./bin/infra-ping -e ansible_become=false`.
 
 ## Backup edge stack data
 
@@ -173,27 +179,9 @@ Optional flags:
 
 The playbook compares `manifest.json` services with the target `edge_stack_compose_files` profile and skips incompatible services with warnings.
 
-## Test connectivity
-
-```bash
-./bin/infra-ping
-```
-
-One host:
-
-```bash
-./bin/infra-ping --limit edge-node-1
-```
-
-List inventory:
-
-```bash
-./bin/infra-list-hosts
-```
-
 ## Run playbooks
 
-The `site` playbook updates the OS, installs Docker Engine and the Docker Compose plugin, configures UFW, then deploys the edge stack (Mosquitto + Node-RED).
+The `site` playbook updates the OS, installs Docker Engine and the Docker Compose plugin, configures UFW, then deploys the edge stack (services per host profile: Mosquitto, Node-RED, PostgreSQL, Grafana).
 
 **Dry run (no changes):**
 
@@ -225,7 +213,7 @@ The `site` playbook updates the OS, installs Docker Engine and the Docker Compos
 ./bin/infra-install-docker
 ```
 
-**Deploy edge stack only (Mosquitto + Node-RED):**
+**Deploy edge stack only:**
 
 ```bash
 ./bin/infra-deploy-edge-stack
@@ -271,7 +259,7 @@ Package roles:
 | `tools` | Admin utilities (git, htop, mc) | `ansible/roles/tools/defaults/main.yml` |
 | `packages` | Meta-role; includes both (for reuse outside `site.yml`) | `ansible/roles/packages/tasks/main.yml` |
 | `firewall` | UFW rules for SSH and edge stack ports | `ansible/roles/firewall/defaults/main.yml` |
-| `edge_stack` | Deploy Mosquitto + Node-RED via Docker Compose | `ansible/roles/edge_stack/defaults/main.yml` |
+| `edge_stack` | Deploy Compose edge stack per host profile | `ansible/roles/edge_stack/defaults/main.yml` |
 
 Compose files live in `docker/` at the repo root. The role copies them to `/opt/docker` on each Pi.
 

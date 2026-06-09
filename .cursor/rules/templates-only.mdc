@@ -28,7 +28,7 @@ When **running** deploy commands, host names come from the live inventory under 
 ## Do not commit or embed
 
 - Real `.env` values, `passwords_file`, or credential hashes
-- Production `mosquitto.conf` or `settings.js` with real auth
-- References to real Pi names, home networks, or personal paths
+- Production service configs or credential files with real auth (e.g. under `docker/data/` or `docker/.env`)
+- References to real hostnames, home networks, or personal paths beyond the fictional template examples
 
 Keep secrets and real host metadata in the external config clone only.

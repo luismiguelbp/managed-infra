@@ -33,7 +33,7 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 # Also copy mirrored .env and reconcile COMPOSE_* for the target
 ./bin/infra-restore-edge-stack --limit edge-node-1 -e edge_stack_restore_env=true
 
-# Keep services running during file restore (not recommended for PostgreSQL)
+# Keep services running during file restore (not recommended for stateful services)
 ./bin/infra-restore-edge-stack --limit edge-node-3 -e edge_stack_restore_stop_services=false
 ```
 
@@ -41,10 +41,10 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 
 - Do not read or print secret values from `.env` files
 - Do not commit backup data or mirrored `.env` files
-- Restore overwrites target `data/` directories and imports `dumps/postgresql.sql`
+- Restore overwrites target `data/` directories and imports dumps under `dumps/` when present in the mirror
 - Default restores data only; `.env` stays on the target unless `edge_stack_restore_env=true`
-- If restoring Node-RED flows without `.env`, ensure `NODE_RED_CREDENTIAL_SECRET` on the target matches the backed-up flows
+- If restoring encrypted application data without `.env`, ensure credential secrets on the target match the backup
 
 ## Output
 
-Restored runtime data under `/opt/docker/data/` on the target and optional PostgreSQL import from `dumps/postgresql.sql`.
+Restored runtime data under `/opt/docker/data/` on the target and optional imports from `dumps/` per host profile.
