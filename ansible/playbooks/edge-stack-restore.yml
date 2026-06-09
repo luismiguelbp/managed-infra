@@ -1,6 +1,6 @@
 ---
 - name: Restore edge stack data from control machine backup mirror
-  hosts: raspberry_pis
+  hosts: linux_hosts
   gather_facts: false
   vars_files:
     - ../roles/edge_stack/defaults/main.yml

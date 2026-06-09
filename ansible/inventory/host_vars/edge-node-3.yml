@@ -15,6 +15,10 @@ edge_stack_data_dirs:
   - data/grafana/data
   - data/grafana/provisioning
 
+# Skip auto-install of mosquitto.conf, passwords_file, and settings.js from docker/data/.
+# Use on hosts that do not run Mosquitto or Node-RED, or when you manage credentials
+# manually / restore from backup. MQTT edge hosts (edge-node-2) omit this and inherit
+# the role defaults instead.
 edge_stack_data_files: []
 
 firewall_edge_ports:

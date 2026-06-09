@@ -1,6 +1,6 @@
 ---
 - name: Docker fleet status
-  hosts: raspberry_pis
+  hosts: linux_hosts
   gather_facts: false
   vars_files:
     - ../roles/edge_stack/defaults/main.yml

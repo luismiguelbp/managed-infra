@@ -16,5 +16,8 @@ edge_stack_data_dirs:
   - data/mosquitto/log
   - data/node-red/data
 
+# edge_stack_data_files: omitted — inherits role defaults (mosquitto.conf, passwords_file,
+# settings.js copied from docker/data/ only when missing on the host).
+
 # Optional: move Docker data to a USB SSD
 # edge_stack_path: /mnt/ssd/docker

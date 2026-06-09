@@ -13,4 +13,4 @@
 networks:
   docker-bridge:
     name: docker-bridge
-    driver: bridge
+    external: true

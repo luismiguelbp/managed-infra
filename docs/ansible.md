@@ -1,20 +1,23 @@
 # Ansible
 
-Manage the Raspberry Pi fleet from your Mac. Inventory is the source of truth for hostnames and DNS names.
+Manage the Linux fleet from your Mac. Inventory is the source of truth for hostnames and DNS names.
 
 ## Fleet inventory
 
-| Host | DNS | Location |
-|------|-----|----------|
-| edge-node-1 | edge-node-1.example.lan | site-a |
-| edge-node-2 | edge-node-2.example.lan | site-b |
-| edge-node-3 | edge-node-3.example.lan | site-c |
+| Host | Group | DNS | Location |
+|------|-------|-----|----------|
+| edge-node-1 | `linux_hosts` | edge-node-1.example.lan | site-a |
+| edge-node-2 | `linux_hosts` | edge-node-2.example.lan | site-b |
+| edge-node-3 | `linux_hosts_standby` | edge-node-3.example.lan | site-c |
+
+Playbooks target `linux_hosts` only. Hosts in `linux_hosts_standby` stay in inventory (with `host_vars`) but are skipped by fleet-wide deploys. Deploy a standby host explicitly with `--limit edge-node-3`.
 
 Files:
 
-- `ansible/inventory/hosts.yml` — hosts and `ansible_host`
+- `ansible/inventory/hosts.yml` — hosts, groups, and `ansible_host`
 - `ansible/inventory/host_vars/` — per-host metadata and edge stack profile
-- `ansible/inventory/group_vars/raspberry_pis.yml` — shared SSH user and defaults
+- `ansible/inventory/group_vars/linux_hosts.yml` — shared defaults for active hosts
+- `ansible/inventory/group_vars/linux_hosts_standby.yml` — shared defaults for standby hosts
 
 ### Edge stack profiles (template inventory)
 
@@ -28,7 +31,22 @@ Each host declares which Compose services it runs via `edge_stack_compose_files`
 
 Production inventory in `MANAGED_INFRA_CONFIG_SRC` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
 
-Hosts without overrides inherit role defaults (MQTT edge). Database hosts also set `edge_stack_data_files: []` and `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432).
+**`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`). Ansible never overwrites files that already exist on the host.
+
+| Host | `edge_stack_data_files` | Behaviour |
+|------|-------------------------|-----------|
+| edge-node-2 | *(omitted)* | Inherits role defaults; seeds MQTT/Node-RED files when missing |
+| edge-node-3 | `[]` | Skips file copy entirely — use for database/metrics-only hosts |
+
+Example for a host without Mosquitto or Node-RED (see `host_vars/edge-node-3.yml`):
+
+```yaml
+edge_stack_data_files: []
+```
+
+Full-stack or MQTT edge hosts should omit this key (or list only the files you want seeded). Do not set `[]` on hosts that run Mosquitto unless you plan to provide `mosquitto.conf` and `passwords_file` manually.
+
+Database-only hosts also set `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432) instead of the MQTT defaults (1880, 1883).
 
 ## Prerequisites
 
@@ -281,7 +299,7 @@ managed-infra-config-src/
 ├── ansible/inventory/
 │   ├── hosts.yml
 │   ├── host_vars/
-│   └── group_vars/          # e.g. raspberry_pis.yml (ansible_user)
+│   └── group_vars/          # e.g. linux_hosts.yml, linux_hosts_standby.yml
 └── docker/
     ├── compose*.yml
     ├── env.example

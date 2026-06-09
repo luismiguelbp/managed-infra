@@ -2,4 +2,4 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-exec "$ROOT/bin/ansible-run" raspberry_pis -m ping "$@"
+exec "$ROOT/bin/ansible-run" linux_hosts -m ping "$@"

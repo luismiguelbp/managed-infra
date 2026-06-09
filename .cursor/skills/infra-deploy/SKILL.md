@@ -42,7 +42,7 @@ Set `MANAGED_INFRA_CONFIG_SRC` in gitignored `.env` (see `.env.example`). Every 
 
 All scripts accept Ansible extras: `--limit <host>`, `--check`, `-e key=value`.
 
-At runtime, host names come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml` (inventory name, not DNS). Template names in this repo: `edge-node-1`, `edge-node-2`, `edge-node-3` (see `ansible/inventory/hosts.yml` and per-host `edge_stack_compose_files` in `host_vars/`).
+At runtime, host names come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml` (inventory name, not DNS). Fleet playbooks target `linux_hosts` only; `linux_hosts_standby` hosts are skipped unless you pass `--limit`. Template example: `edge-node-1`, `edge-node-2` (active), `edge-node-3` (standby) — see `ansible/inventory/hosts.yml` and per-host `edge_stack_compose_files` in `host_vars/`.
 
 ## Deploy workflow
 
