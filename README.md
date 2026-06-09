@@ -4,15 +4,30 @@ Infrastructure-as-code for a small Raspberry Pi fleet. Ansible and Docker Compos
 
 ## Contents
 
+- Getting started (first-time fleet setup): below
+- SSH keys (Mac to Pi): [docs/ssh-keys-mac-to-linux.md](docs/ssh-keys-mac-to-linux.md)
 - Ansible inventory and `site` playbook: [docs/ansible.md](docs/ansible.md)
-- Edge stack (Mosquitto + Node-RED): [docker/README.md](docker/README.md)
+- Edge stack (Compose services per host profile): [docker/README.md](docker/README.md)
 - Helper scripts in `bin/` (`ansible-*`, `infra-*` prefixes)
+
+## Getting started
+
+First-time setup on your Mac, in order:
+
+1. [SSH keys to each Pi](docs/ssh-keys-mac-to-linux.md)
+2. [Passwordless sudo](docs/ansible.md#privilege-escalation-sudo) for the inventory SSH user on every host
+3. [Setup](#setup) — venv, dependencies, and `MANAGED_INFRA_CONFIG_SRC` in `.env`
+4. Ansible collections (once): `ansible-galaxy collection install -r ansible/requirements.yml`
+5. Bootstrap: `./bin/infra-bootstrap --check`, then `./bin/infra-bootstrap`
+6. [Edge stack credentials](docker/README.md#credentials) on each Pi, then `./bin/infra-docker-status`
+
+Day-to-day commands and options: [docs/ansible.md](docs/ansible.md).
 
 ## Prerequisites
 
 - Python 3.10+ (for contract tests)
 - Ansible on the control machine (`brew install ansible`)
-- SSH key access to each Pi
+- SSH key access to each Pi — [docs/ssh-keys-mac-to-linux.md](docs/ssh-keys-mac-to-linux.md)
 
 ## Setup
 

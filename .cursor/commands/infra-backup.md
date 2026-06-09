@@ -27,4 +27,4 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 
 ## Output
 
-Per host mirror at `MANAGED_INFRA_BACKUP_DEST/<host>/` with `.env` (if present), `manifest.json`, mirrored `data/` folders, and `dumps/postgresql.sql` on database hosts.
+Per host mirror at `MANAGED_INFRA_BACKUP_DEST/<host>/` with `.env` (if present), `manifest.json`, mirrored `data/` folders, and service dumps under `dumps/` when included in the host profile.

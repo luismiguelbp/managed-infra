@@ -77,6 +77,8 @@ Containers start only when `/opt/docker/.env` exists. Ansible does not overwrite
 |---------|-------|
 | Mosquitto | `eclipse-mosquitto:latest` |
 | Node-RED | `nodered/node-red:latest` |
+| PostgreSQL | `postgres:16-alpine` |
+| Grafana | `grafana/grafana:latest` |
 
 ## Commands
 
