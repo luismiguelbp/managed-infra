@@ -1,0 +1,16 @@
+---
+- name: Bootstrap Raspberry Pi fleet
+  hosts: raspberry_pis
+  become: true
+  roles:
+    - role: common
+    - role: base_packages
+      tags: [packages, base_packages]
+    - role: tools
+      tags: [packages, tools]
+    - role: docker
+      tags: [docker]
+    - role: firewall
+      tags: [firewall]
+    - role: edge_stack
+      tags: [edge_stack]

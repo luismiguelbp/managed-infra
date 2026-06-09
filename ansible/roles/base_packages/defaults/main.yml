@@ -1,0 +1,5 @@
+---
+base_packages:
+  - curl
+  - python3
+  - python-is-python3

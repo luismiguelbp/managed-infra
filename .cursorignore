@@ -1,0 +1,6 @@
+# Keep secrets and local deploy configs out of AI context (gitignore is not enough).
+
+.env
+**/.env
+docker/data/mosquitto/config/passwords_file
+local/

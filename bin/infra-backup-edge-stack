@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/bin/_lib.sh"
+
+verify_managed_infra_backup_dest
+
+exec "$ROOT/bin/ansible-playbook" \
+  -e "managed_infra_backup_dest=$MANAGED_INFRA_BACKUP_DEST" \
+  playbooks/edge-stack-backup.yml "$@"

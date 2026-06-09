@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source "$(cd "$(dirname "$0")" && pwd)/_lib.sh"
+ansible_cd
+ensure_ansible
+verify_managed_infra_config_src
+exec ansible -i "$MANAGED_INFRA_INVENTORY_FILE" "$@"

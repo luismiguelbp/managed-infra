@@ -1,0 +1,13 @@
+[project]
+name = "managed-infra"
+version = "0.1.0"
+description = "Infrastructure-as-code for a small Raspberry Pi fleet"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Your Name", email = "your.email@example.com" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = "-v --tb=short"

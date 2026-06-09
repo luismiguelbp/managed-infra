@@ -1,0 +1,20 @@
+---
+location: site-b
+dns_name: edge-node-2.example.lan
+role: edge
+hardware_model: Raspberry Pi 3 B+
+
+# MQTT edge stack (Mosquitto + Node-RED).
+edge_stack_compose_files:
+  - compose.yml
+  - compose-mosquitto.yml
+  - compose-node-red.yml
+
+edge_stack_data_dirs:
+  - data/mosquitto/config
+  - data/mosquitto/data
+  - data/mosquitto/log
+  - data/node-red/data
+
+# Optional: move Docker data to a USB SSD
+# edge_stack_path: /mnt/ssd/docker

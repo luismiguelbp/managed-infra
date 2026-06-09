@@ -1,0 +1,41 @@
+---
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  when: firewall_enabled | bool
+
+- name: Set UFW default incoming policy to deny
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+  when: firewall_enabled | bool
+
+- name: Set UFW default outgoing policy to allow
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+  when: firewall_enabled | bool
+
+- name: Allow SSH through UFW
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  when:
+    - firewall_enabled | bool
+    - firewall_allow_ssh | bool
+
+- name: Allow edge stack ports from trusted networks
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.1 | string }}"
+    proto: tcp
+    src: "{{ item.0 }}"
+  loop: "{{ firewall_trusted_cidrs | product(firewall_edge_ports) | list }}"
+  when: firewall_enabled | bool
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  when: firewall_enabled | bool

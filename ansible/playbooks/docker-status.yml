@@ -1,0 +1,81 @@
+---
+- name: Docker fleet status
+  hosts: raspberry_pis
+  gather_facts: false
+  vars_files:
+    - ../roles/edge_stack/defaults/main.yml
+  tasks:
+    - name: Check whether edge stack environment file exists
+      ansible.builtin.stat:
+        path: "{{ edge_stack_path }}/.env"
+      register: edge_stack_env_file
+
+    - name: Check Docker daemon state
+      ansible.builtin.command: systemctl is-active docker
+      register: docker_service_status
+      changed_when: false
+      failed_when: false
+
+    - name: Check Docker Compose version
+      ansible.builtin.command: docker compose version
+      register: docker_compose_version
+      changed_when: false
+      failed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when: edge_stack_env_file.stat.exists
+
+    - name: Check edge stack containers
+      ansible.builtin.command: docker compose ps
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: docker_compose_ps
+      changed_when: false
+      failed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when: edge_stack_env_file.stat.exists
+
+    - name: Check uptime
+      ansible.builtin.command: uptime
+      register: host_uptime
+      changed_when: false
+
+    - name: Check root disk usage
+      ansible.builtin.shell: df -h / 2>/dev/null | tail -1
+      register: root_disk_usage
+      changed_when: false
+
+    - name: Check edge stack path disk usage
+      ansible.builtin.shell: df -h "{{ edge_stack_path }}" 2>/dev/null | tail -1 || echo NO_EDGE_STACK_PATH
+      register: edge_stack_disk_usage
+      changed_when: false
+
+    - name: Build compose status text
+      ansible.builtin.set_fact:
+        docker_compose_ps_text: >-
+          {{
+            docker_compose_ps.stdout
+            if edge_stack_env_file.stat.exists and (docker_compose_ps.stdout | default('') | length > 0)
+            else 'NO_EDGE_STACK'
+          }}
+
+    - name: Build compose version text
+      ansible.builtin.set_fact:
+        docker_compose_version_text: >-
+          {{
+            docker_compose_version.stdout
+            if edge_stack_env_file.stat.exists and (docker_compose_version.stdout | default('') | length > 0)
+            else 'NO_EDGE_STACK'
+          }}
+
+    - name: Print host status summary
+      ansible.builtin.debug:
+        msg:
+          - "host={{ inventory_hostname }}"
+          - "docker_service={{ docker_service_status.stdout | default('unknown') }}"
+          - "compose_version={{ docker_compose_version_text }}"
+          - "compose_ps={{ docker_compose_ps_text }}"
+          - "uptime={{ host_uptime.stdout }}"
+          - "root_disk={{ root_disk_usage.stdout | default('unknown') }}"
+          - "edge_stack_disk={{ edge_stack_disk_usage.stdout | default('unknown') }}"

@@ -1,0 +1,51 @@
+---
+# Remote path where Compose files and service data live on each Pi.
+# Override per host when using a USB SSD (e.g. /mnt/ssd/docker).
+edge_stack_path: /opt/docker
+
+# Compose files copied from managed-infra/docker/ on the control machine.
+edge_stack_local_src: "{{ playbook_dir }}/../../docker"
+
+edge_stack_compose_files:
+  - compose.yml
+  - compose-mosquitto.yml
+  - compose-node-red.yml
+
+edge_stack_compose_file_var: >-
+  {{ edge_stack_compose_files | join(',') }}
+
+edge_stack_timezone: Europe/Madrid
+
+# Per-host project name; keeps container names unique across the fleet.
+edge_stack_project_name: "{{ inventory_hostname }}"
+
+edge_stack_mosquitto_image: eclipse-mosquitto:latest
+edge_stack_node_red_image: nodered/node-red:latest
+edge_stack_grafana_image: grafana/grafana:latest
+edge_stack_postgresql_image: postgres:16-alpine
+
+# Pull images before starting containers.
+edge_stack_pull_images: true
+
+# Mosquitto runs as UID 1883 inside the official image.
+edge_stack_mosquitto_uid: 1883
+edge_stack_mosquitto_gid: 1883
+
+# Runtime directories created on each Pi (mirrors docker/data/ layout).
+edge_stack_data_dirs:
+  - data/mosquitto/config
+  - data/mosquitto/data
+  - data/mosquitto/log
+  - data/node-red/data
+
+# Files under docker/data/ installed on the Pi only when missing.
+edge_stack_data_files:
+  - src: data/mosquitto/config/mosquitto.conf
+    owner: mosquitto
+    mode: "0644"
+  - src: data/mosquitto/config/passwords_file
+    owner: mosquitto
+    mode: "0600"
+  - src: data/node-red/data/settings.js
+    owner: node_red
+    mode: "0644"

@@ -1,0 +1,77 @@
+---
+- name: Install Docker prerequisites
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+    state: present
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Docker GPG key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/debian/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+  # GPG key must exist on disk before apt can verify the Docker repo in --check
+  check_mode: false
+
+- name: Map Ansible architecture to Docker apt arch
+  ansible.builtin.set_fact:
+    docker_apt_arch: >-
+      {{
+        'arm64' if ansible_facts['architecture'] == 'aarch64'
+        else ('armhf' if ansible_facts['architecture'] == 'armv7l' else ansible_facts['architecture'])
+      }}
+
+- name: Ensure python3-debian for deb822_repository
+  ansible.builtin.apt:
+    name: python3-debian
+    state: present
+  check_mode: false
+
+- name: Add Docker apt repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: deb
+    uris: https://download.docker.com/linux/debian
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    components: stable
+    architectures: "{{ docker_apt_arch }}"
+    signed_by: /etc/apt/keyrings/docker.asc
+    state: present
+  # .sources file must exist on disk before apt can resolve docker-ce in --check
+  check_mode: false
+
+- name: Refresh apt cache after Docker repo
+  ansible.builtin.apt:
+    update_cache: true
+  check_mode: false
+
+- name: Install Docker Engine and Compose plugin
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+
+- name: Ensure Docker service is enabled and running
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: not ansible_check_mode
+
+- name: Add SSH user to docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+  when: not ansible_check_mode
