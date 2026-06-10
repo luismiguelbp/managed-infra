@@ -7,25 +7,28 @@ hardware_model: Raspberry Pi 3 B+
 # Full stack (lab / template host with every service).
 edge_stack_compose_files:
   - compose.yml
-  - compose-mosquitto.yml
+  - compose-portainer.yml
   - compose-node-red.yml
+  - compose-mosquitto.yml
   - compose-postgresql.yml
   - compose-grafana.yml
 
 edge_stack_data_dirs:
+  - data/portainer
+  - data/node-red/data
   - data/mosquitto/config
   - data/mosquitto/data
   - data/mosquitto/log
-  - data/node-red/data
   - data/postgresql/data
   - data/grafana/data
   - data/grafana/provisioning
 
 firewall_edge_ports:
+  - 9443
   - 1880
   - 1883
-  - 3000
   - 5432
+  - 3000
 
 # Optional: move Docker data to a USB SSD
 # edge_stack_path: /mnt/ssd/docker

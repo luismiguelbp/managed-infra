@@ -2,5 +2,8 @@
 ansible_user: user
 ansible_python_interpreter: /usr/bin/python3
 
+# Manage UFW on fleet hosts (SSH + edge stack ports from trusted CIDRs).
+firewall_enabled: true
+
 # Set to true to reboot after apt upgrade when /var/run/reboot-required exists.
 reboot_after_upgrade: false

@@ -68,3 +68,9 @@ Edge stack credentials are set manually on each Pi. See [docker/README.md](docke
 1. Develop playbooks and **templates** in this repo (`docker/`, `ansible/inventory/` are not deployed as-is).
 2. Maintain final configs (hosts, secrets, tuned `mosquitto.conf`, etc.) in `MANAGED_INFRA_CONFIG_SRC` (see `.env.example`).
 3. Run `bin/` helpers — they verify the external paths, then Ansible copies `docker/` files to `/opt/docker` on each Pi.
+
+## AI agent context
+
+- `AGENTS.md` contains portable project guidance for Codex and other AI coding agents.
+- `.agents/skills/` contains standard Agent Skills for fleet operations and command-like workflows.
+- `.cursor/rules/` remains available only for Cursor-specific rule behavior.

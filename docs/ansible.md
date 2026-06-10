@@ -25,8 +25,8 @@ Each host declares which Compose services it runs via `edge_stack_compose_files`
 
 | Host | Stack | Compose services |
 |------|-------|------------------|
-| edge-node-1 | Full (lab) | Mosquitto, Node-RED, PostgreSQL, Grafana |
-| edge-node-2 | MQTT edge | Mosquitto, Node-RED |
+| edge-node-1 | Full (lab) | Portainer, Node-RED, Mosquitto, PostgreSQL, Grafana |
+| edge-node-2 | MQTT edge | Node-RED, Mosquitto |
 | edge-node-3 | Database / metrics | PostgreSQL, Grafana |
 
 Production inventory in `MANAGED_INFRA_CONFIG_SRC` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
@@ -46,7 +46,7 @@ edge_stack_data_files: []
 
 Full-stack or MQTT edge hosts should omit this key (or list only the files you want seeded). Do not set `[]` on hosts that run Mosquitto unless you plan to provide `mosquitto.conf` and `passwords_file` manually.
 
-Database-only hosts also set `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432) instead of the MQTT defaults (1880, 1883).
+Database-only hosts also set `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432) instead of the MQTT defaults (1880, 1883). Hosts that include Portainer should allow 9443.
 
 ## Prerequisites
 

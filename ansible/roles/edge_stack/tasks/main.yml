@@ -131,10 +131,11 @@
     edge_stack_publish_ports: >-
       {{
         ([]
-        + ([1883, 8883, 9001] if 'compose-mosquitto.yml' in edge_stack_compose_files else [])
+        + ([9443] if 'compose-portainer.yml' in edge_stack_compose_files else [])
         + ([1880] if 'compose-node-red.yml' in edge_stack_compose_files else [])
-        + ([3000] if 'compose-grafana.yml' in edge_stack_compose_files else [])
+        + ([1883, 8883, 9001] if 'compose-mosquitto.yml' in edge_stack_compose_files else [])
         + ([5432] if 'compose-postgresql.yml' in edge_stack_compose_files else [])
+        + ([3000] if 'compose-grafana.yml' in edge_stack_compose_files else [])
         ) | unique
       }}
 
