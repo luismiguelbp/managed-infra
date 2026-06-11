@@ -126,6 +126,79 @@
     recurse: true
   when: "'compose-grafana.yml' in edge_stack_compose_files"
 
+- name: Build edge stack publish ports list
+  ansible.builtin.set_fact:
+    edge_stack_publish_ports: >-
+      {{
+        ([]
+        + ([9443] if 'compose-portainer.yml' in edge_stack_compose_files else [])
+        + ([1880] if 'compose-node-red.yml' in edge_stack_compose_files else [])
+        + ([1883, 8883, 9001] if 'compose-mosquitto.yml' in edge_stack_compose_files else [])
+        + ([5432] if 'compose-postgresql.yml' in edge_stack_compose_files else [])
+        + ([3000] if 'compose-grafana.yml' in edge_stack_compose_files else [])
+        ) | unique
+      }}
+
+- name: Ensure shared docker-bridge network exists
+  community.docker.docker_network:
+    name: docker-bridge
+    driver: bridge
+  become: true
+  become_user: "{{ ansible_user }}"
+  when: edge_stack_env_file.stat.exists
+
+- name: Find foreign containers blocking edge stack ports
+  ansible.builtin.shell: |
+    set -o pipefail
+    project="{{ edge_stack_project_name }}"
+    found=""
+    for port in {{ edge_stack_publish_ports | join(' ') }}; do
+      names=$(docker ps --filter "publish=${port}" --format '{{ "{{" }}.Names{{ "}}" }}' 2>/dev/null || true)
+      for name in $names; do
+        case "$name" in
+          ${project}_*) ;;
+          *) found="$found $name" ;;
+        esac
+      done
+    done
+    echo "$found" | tr ' ' '\n' | sort -u | grep -v '^$' || true
+  args:
+    executable: /bin/bash
+  register: edge_stack_foreign_containers
+  changed_when: false
+  become: true
+  become_user: "{{ ansible_user }}"
+  when: edge_stack_env_file.stat.exists
+
+- name: Stop foreign containers blocking edge stack ports
+  ansible.builtin.command: docker stop {{ item }}
+  loop: "{{ edge_stack_foreign_containers.stdout_lines }}"
+  become: true
+  become_user: "{{ ansible_user }}"
+  when:
+    - edge_stack_env_file.stat.exists
+    - edge_stack_foreign_containers.stdout_lines | length > 0
+
+- name: Remove foreign containers blocking edge stack ports
+  ansible.builtin.command: docker rm {{ item }}
+  loop: "{{ edge_stack_foreign_containers.stdout_lines }}"
+  become: true
+  become_user: "{{ ansible_user }}"
+  when:
+    - edge_stack_env_file.stat.exists
+    - edge_stack_foreign_containers.stdout_lines | length > 0
+
+- name: Remove stale edge stack containers before start
+  community.docker.docker_compose_v2:
+    project_src: "{{ edge_stack_path }}"
+    files: "{{ edge_stack_compose_files }}"
+    env_files:
+      - "{{ edge_stack_path }}/.env"
+    state: absent
+  become: true
+  become_user: "{{ ansible_user }}"
+  when: edge_stack_env_file.stat.exists
+
 - name: Start edge stack services
   community.docker.docker_compose_v2:
     project_src: "{{ edge_stack_path }}"

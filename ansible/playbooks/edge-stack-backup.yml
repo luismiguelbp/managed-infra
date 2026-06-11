@@ -1,6 +1,6 @@
 ---
 - name: Backup edge stack data to control machine
-  hosts: raspberry_pis
+  hosts: linux_hosts
   gather_facts: false
   vars_files:
     - ../roles/edge_stack/defaults/main.yml
@@ -12,9 +12,11 @@
     host_backup_dumps_root: "{{ host_backup_root }}/dumps"
     remote_env_path: "{{ edge_stack_path }}/.env"
     remote_postgresql_dump_path: "/tmp/{{ inventory_hostname }}-postgresql.sql"
+    remote_portainer_dir: "{{ edge_stack_path }}/data/portainer"
     remote_mosquitto_dir: "{{ edge_stack_path }}/data/mosquitto"
     remote_node_red_dir: "{{ edge_stack_path }}/data/node-red"
     remote_grafana_dir: "{{ edge_stack_path }}/data/grafana"
+    local_portainer_dir: "{{ host_backup_data_root }}/portainer"
     local_mosquitto_dir: "{{ host_backup_data_root }}/mosquitto"
     local_node_red_dir: "{{ host_backup_data_root }}/node-red"
     local_grafana_dir: "{{ host_backup_data_root }}/grafana"
@@ -74,6 +76,31 @@
       delegate_to: localhost
       become: false
       when: not edge_stack_env_file.stat.exists
+
+    - name: Check Portainer data directory on host
+      ansible.builtin.stat:
+        path: "{{ remote_portainer_dir }}"
+      register: remote_portainer_dir_stat
+      when: "'compose-portainer.yml' in edge_stack_compose_files"
+
+    - name: Mirror Portainer data directory
+      ansible.posix.synchronize:
+        mode: pull
+        src: "{{ remote_portainer_dir }}/"
+        dest: "{{ local_portainer_dir }}/"
+        archive: true
+        delete: true
+      when:
+        - "'compose-portainer.yml' in edge_stack_compose_files"
+        - remote_portainer_dir_stat.stat.exists
+
+    - name: Remove local Portainer mirror when service not present
+      ansible.builtin.file:
+        path: "{{ local_portainer_dir }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: "'compose-portainer.yml' not in edge_stack_compose_files"
 
     - name: Check Mosquitto data directory on host
       ansible.builtin.stat:
@@ -280,8 +307,9 @@
             "last_backup": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
             "compose_files": {{ edge_stack_compose_files | to_json }},
             "services": {
-              "mosquitto": {{ ('compose-mosquitto.yml' in edge_stack_compose_files) | to_json }},
+              "portainer": {{ ('compose-portainer.yml' in edge_stack_compose_files) | to_json }},
               "node_red": {{ ('compose-node-red.yml' in edge_stack_compose_files) | to_json }},
+              "mosquitto": {{ ('compose-mosquitto.yml' in edge_stack_compose_files) | to_json }},
               "grafana": {{ ('compose-grafana.yml' in edge_stack_compose_files) | to_json }},
               "postgresql": {{ ('compose-postgresql.yml' in edge_stack_compose_files) | to_json }}
             }

@@ -24,8 +24,11 @@
   ansible.builtin.set_fact:
     docker_apt_arch: >-
       {{
-        'arm64' if ansible_facts['architecture'] == 'aarch64'
-        else ('armhf' if ansible_facts['architecture'] == 'armv7l' else ansible_facts['architecture'])
+        {
+          'x86_64': 'amd64',
+          'aarch64': 'arm64',
+          'armv7l': 'armhf',
+        }.get(ansible_facts['architecture'], ansible_facts['architecture'])
       }}
 
 - name: Ensure python3-debian for deb822_repository
@@ -74,4 +77,11 @@
     name: "{{ ansible_user }}"
     groups: docker
     append: true
+  register: docker_group_membership
   when: not ansible_check_mode
+
+- name: Apply docker group membership for remaining tasks
+  ansible.builtin.include_tasks: reset_connection.yml
+  when:
+    - not ansible_check_mode
+    - docker_group_membership is changed

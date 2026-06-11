@@ -13,3 +13,7 @@ firewall_trusted_cidrs:
 firewall_edge_ports:
   - 1880
   - 1883
+
+firewall_samba_enabled: "{{ samba_enabled | default(false) }}"
+firewall_samba_ports:
+  - 445

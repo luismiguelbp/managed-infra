@@ -1,0 +1,3 @@
+---
+- name: Reset SSH connection so docker group membership applies
+  ansible.builtin.meta: reset_connection

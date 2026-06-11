@@ -1,6 +1,6 @@
 ---
-- name: Bootstrap Raspberry Pi fleet
-  hosts: raspberry_pis
+- name: Bootstrap Linux fleet
+  hosts: linux_hosts
   become: true
   roles:
     - role: common
@@ -12,5 +12,8 @@
       tags: [docker]
     - role: firewall
       tags: [firewall]
+    - role: samba
+      tags: [samba]
+      when: samba_enabled | bool
     - role: edge_stack
       tags: [edge_stack]

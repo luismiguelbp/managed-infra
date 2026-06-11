@@ -1,6 +1,6 @@
 ---
 - name: Restore edge stack data from control machine backup mirror
-  hosts: raspberry_pis
+  hosts: linux_hosts
   gather_facts: false
   vars_files:
     - ../roles/edge_stack/defaults/main.yml
@@ -16,19 +16,22 @@
     host_backup_dumps_root: "{{ host_backup_root }}/dumps"
     remote_env_path: "{{ edge_stack_path }}/.env"
     remote_postgresql_dump_path: "/tmp/{{ inventory_hostname }}-postgresql-restore.sql"
+    remote_portainer_dir: "{{ edge_stack_path }}/data/portainer"
     remote_mosquitto_dir: "{{ edge_stack_path }}/data/mosquitto"
     remote_node_red_dir: "{{ edge_stack_path }}/data/node-red"
     remote_grafana_dir: "{{ edge_stack_path }}/data/grafana"
+    local_portainer_dir: "{{ host_backup_data_root }}/portainer"
     local_mosquitto_dir: "{{ host_backup_data_root }}/mosquitto"
     local_node_red_dir: "{{ host_backup_data_root }}/node-red"
     local_grafana_dir: "{{ host_backup_data_root }}/grafana"
     local_postgresql_dump: "{{ host_backup_dumps_root }}/postgresql.sql"
     local_backup_env_path: "{{ host_backup_root }}/.env"
     edge_stack_restore_service_compose:
-      mosquitto: compose-mosquitto.yml
+      portainer: compose-portainer.yml
       node_red: compose-node-red.yml
-      grafana: compose-grafana.yml
+      mosquitto: compose-mosquitto.yml
       postgresql: compose-postgresql.yml
+      grafana: compose-grafana.yml
   tasks:
     - name: Load backup manifest
       ansible.builtin.slurp:
@@ -133,6 +136,29 @@
       ansible.builtin.stat:
         path: "{{ remote_env_path }}"
       register: edge_stack_env_file_after_restore
+
+    - name: Check Portainer backup data on control machine
+      ansible.builtin.stat:
+        path: "{{ local_portainer_dir }}"
+      delegate_to: localhost
+      become: false
+      register: local_portainer_dir_stat
+      when:
+        - backup_manifest.services.portainer | default(false)
+        - "'compose-portainer.yml' in edge_stack_compose_files"
+
+    - name: Restore Portainer data directory
+      ansible.posix.synchronize:
+        mode: push
+        src: "{{ local_portainer_dir }}/"
+        dest: "{{ remote_portainer_dir }}/"
+        archive: true
+        delete: true
+      when:
+        - backup_manifest.services.portainer | default(false)
+        - "'compose-portainer.yml' in edge_stack_compose_files"
+        - local_portainer_dir_stat is defined
+        - local_portainer_dir_stat.stat.exists
 
     - name: Check Mosquitto backup data on control machine
       ansible.builtin.stat:
@@ -276,6 +302,19 @@
       when:
         - postgresql_restore_result is defined
         - (postgresql_restore_result.rc | default(1)) == 0
+
+    - name: Set Portainer data ownership
+      ansible.builtin.file:
+        path: "{{ remote_portainer_dir }}"
+        state: directory
+        owner: "{{ edge_stack_uid }}"
+        group: "{{ edge_stack_gid }}"
+        recurse: true
+      when:
+        - backup_manifest.services.portainer | default(false)
+        - "'compose-portainer.yml' in edge_stack_compose_files"
+        - local_portainer_dir_stat is defined
+        - local_portainer_dir_stat.stat.exists
 
     - name: Set Mosquitto data ownership
       ansible.builtin.file:

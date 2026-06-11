@@ -2,4 +2,4 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-exec "$ROOT/bin/ansible-run" linux_hosts -m ping "$@"
+exec "$ROOT/bin/ansible-playbook" playbooks/site.yml --tags firewall,samba "$@"

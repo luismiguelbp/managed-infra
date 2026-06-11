@@ -1,20 +1,23 @@
 # Ansible
 
-Manage the Raspberry Pi fleet from your Mac. Inventory is the source of truth for hostnames and DNS names.
+Manage the Linux fleet from your Mac. Inventory is the source of truth for hostnames and DNS names.
 
 ## Fleet inventory
 
-| Host | DNS | Location |
-|------|-----|----------|
-| edge-node-1 | edge-node-1.example.lan | site-a |
-| edge-node-2 | edge-node-2.example.lan | site-b |
-| edge-node-3 | edge-node-3.example.lan | site-c |
+| Host | Group | DNS | Location |
+|------|-------|-----|----------|
+| edge-node-1 | `linux_hosts` | edge-node-1.example.lan | site-a |
+| edge-node-2 | `linux_hosts` | edge-node-2.example.lan | site-b |
+| edge-node-3 | `linux_hosts_standby` | edge-node-3.example.lan | site-c |
+
+Playbooks target `linux_hosts` only. Hosts in `linux_hosts_standby` stay in inventory (with `host_vars`) but are skipped by fleet-wide deploys. Deploy a standby host explicitly with `--limit edge-node-3`.
 
 Files:
 
-- `ansible/inventory/hosts.yml` — hosts and `ansible_host`
+- `ansible/inventory/hosts.yml` — hosts, groups, and `ansible_host`
 - `ansible/inventory/host_vars/` — per-host metadata and edge stack profile
-- `ansible/inventory/group_vars/raspberry_pis.yml` — shared SSH user and defaults
+- `ansible/inventory/group_vars/linux_hosts.yml` — shared defaults for active hosts
+- `ansible/inventory/group_vars/linux_hosts_standby.yml` — shared defaults for standby hosts
 
 ### Edge stack profiles (template inventory)
 
@@ -22,13 +25,28 @@ Each host declares which Compose services it runs via `edge_stack_compose_files`
 
 | Host | Stack | Compose services |
 |------|-------|------------------|
-| edge-node-1 | Full (lab) | Mosquitto, Node-RED, PostgreSQL, Grafana |
-| edge-node-2 | MQTT edge | Mosquitto, Node-RED |
+| edge-node-1 | Full (lab) | Portainer, Node-RED, Mosquitto, PostgreSQL, Grafana |
+| edge-node-2 | MQTT edge | Node-RED, Mosquitto |
 | edge-node-3 | Database / metrics | PostgreSQL, Grafana |
 
 Production inventory in `MANAGED_INFRA_CONFIG_SRC` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
 
-Hosts without overrides inherit role defaults (MQTT edge). Database hosts also set `edge_stack_data_files: []` and `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432).
+**`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`). Ansible never overwrites files that already exist on the host.
+
+| Host | `edge_stack_data_files` | Behaviour |
+|------|-------------------------|-----------|
+| edge-node-2 | *(omitted)* | Inherits role defaults; seeds MQTT/Node-RED files when missing |
+| edge-node-3 | `[]` | Skips file copy entirely — use for database/metrics-only hosts |
+
+Example for a host without Mosquitto or Node-RED (see `host_vars/edge-node-3.yml`):
+
+```yaml
+edge_stack_data_files: []
+```
+
+Full-stack or MQTT edge hosts should omit this key (or list only the files you want seeded). Do not set `[]` on hosts that run Mosquitto unless you plan to provide `mosquitto.conf` and `passwords_file` manually.
+
+Database-only hosts also set `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432) instead of the MQTT defaults (1880, 1883). Hosts that include Portainer should allow 9443.
 
 ## Prerequisites
 
@@ -99,6 +117,7 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP_DEST` |
 | `bin/infra-restore-edge-stack` | Push backup mirror to one host (`--limit` required) |
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
+| `bin/infra-configure-samba` | Configure Samba public share and SMB firewall (`--tags firewall,samba`) |
 | `bin/infra-reboot` | Reboot all Pis (`common` role, `--tags reboot`) |
 
 Task helpers accept the same extra flags as Ansible (`--check`, `--limit`, `-e`, etc.).
@@ -231,6 +250,24 @@ Dry run:
 ./bin/infra-deploy-edge-stack --check
 ```
 
+**Configure Samba public share only:**
+
+```bash
+./bin/infra-configure-samba
+```
+
+One host:
+
+```bash
+./bin/infra-configure-samba --limit edge-node-1
+```
+
+Dry run:
+
+```bash
+./bin/infra-configure-samba --limit edge-node-1 --check
+```
+
 **Install packages:**
 
 ```bash
@@ -259,6 +296,7 @@ Package roles:
 | `tools` | Admin utilities (git, htop, mc) | `ansible/roles/tools/defaults/main.yml` |
 | `packages` | Meta-role; includes both (for reuse outside `site.yml`) | `ansible/roles/packages/tasks/main.yml` |
 | `firewall` | UFW rules for SSH and edge stack ports | `ansible/roles/firewall/defaults/main.yml` |
+| `samba` | Anonymous public SMB share at `/srv/samba/public` | `ansible/roles/samba/defaults/main.yml` |
 | `edge_stack` | Deploy Compose edge stack per host profile | `ansible/roles/edge_stack/defaults/main.yml` |
 
 Compose files live in `docker/` at the repo root. The role copies them to `/opt/docker` on each Pi.
@@ -281,7 +319,7 @@ managed-infra-config-src/
 ├── ansible/inventory/
 │   ├── hosts.yml
 │   ├── host_vars/
-│   └── group_vars/          # e.g. raspberry_pis.yml (ansible_user)
+│   └── group_vars/          # e.g. linux_hosts.yml, linux_hosts_standby.yml
 └── docker/
     ├── compose*.yml
     ├── env.example
@@ -308,10 +346,35 @@ Ansible deploys `env.example`. When `docker/.env` exists on the control machine 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `firewall_enabled` | `true` | Enable UFW |
-| `firewall_trusted_cidrs` | RFC1918 ranges | Sources allowed to reach MQTT and Node-RED |
+| `firewall_trusted_cidrs` | RFC1918 ranges | Sources allowed to reach trusted service ports |
 | `firewall_edge_ports` | `1880`, `1883` | Edge stack ports |
+| `firewall_samba_enabled` | `samba_enabled` | Toggle SMB firewall rules |
+| `firewall_samba_ports` | `445` | Samba SMB ports |
 
 Restrict further per site with `host_vars` if needed (for example a single `/24`).
+
+### Samba public share
+
+The `samba` role configures a guest read-write share on active hosts using inventory defaults from `group_vars/linux_hosts.yml`:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `samba_enabled` | `false` (role default) | Enable Samba role |
+| `samba_share_name` | `public` | Share name for SMB clients |
+| `samba_share_path` | `/srv/samba/public` | Shared directory path |
+| `samba_share_directory_mode` | `"0777"` | World read-write permissions for anonymous access |
+
+Guest mode is intentionally open to trusted LAN clients only. Keep `firewall_trusted_cidrs` restricted to your internal networks and do not expose SMB to the public internet.
+
+Mount examples:
+
+```bash
+# macOS
+mount -t smbfs //guest@edge-node-1.example.lan/public /tmp/samba-public
+
+# Linux
+sudo mount -t cifs //edge-node-1.example.lan/public /mnt/samba-public -o guest,uid=$(id -u),gid=$(id -g)
+```
 
 ### Mosquitto migration
 

@@ -1,34 +1,15 @@
 ---
-description: managed-infra holds templates only — use fictional fleet names, never real hostnames or secrets
+description: managed-infra uses AGENTS.md as the source of truth for template-only and secret-handling rules
 alwaysApply: true
 ---
 
-# Templates only (managed-infra)
+# managed-infra Agent Guide
 
-This repository is **IaC templates**, not production config. Ansible and Docker files here are **not deployed as-is**.
+Use `AGENTS.md` as the source of truth for this repository.
 
-## Fictional names in this repo
+Important Cursor-specific reminder:
 
-Use names from `ansible/inventory/` in docs, rules, skills, commands, comments, and examples:
-
-| Use | Examples |
-|-----|----------|
-| Inventory hosts | `edge-node-1`, `edge-node-2`, `edge-node-3` |
-| Sites / locations | `site-a`, `site-b`, `site-c` |
-| DNS (fictional) | `edge-node-1.example.lan`, `edge-node-2.example.lan`, `edge-node-3.example.lan` |
-
-Do **not** put real hostnames, real DNS names, real locations, or fleet-specific paths in this repository.
-
-## Real config lives elsewhere
-
-Production inventory, secrets, and tuned configs belong in **`MANAGED_INFRA_CONFIG_SRC`** (set in gitignored `.env`). Deploy scripts read from that path, not from this repo's template `ansible/inventory/` or `docker/`.
-
-When **running** deploy commands, host names come from the live inventory under `MANAGED_INFRA_CONFIG_SRC`. When **writing or editing** files in managed-infra, always use the fictional template names above.
-
-## Do not commit or embed
-
-- Real `.env` values, `passwords_file`, or credential hashes
-- Production service configs or credential files with real auth (e.g. under `docker/data/` or `docker/.env`)
-- References to real hostnames, home networks, or personal paths beyond the fictional template examples
-
-Keep secrets and real host metadata in the external config clone only.
+- This repository contains templates only.
+- Use fictional names from `ansible/inventory/` in examples.
+- Never add real hostnames, real locations, secrets, credential hashes, or production config.
+- Before editing or operating this repo, follow the rules in `AGENTS.md`.

@@ -1,0 +1,16 @@
+[global]
+   workgroup = WORKGROUP
+   server role = standalone server
+   map to guest = {{ samba_map_to_guest }}
+   server min protocol = {{ samba_server_min_protocol }}
+
+[{{ samba_share_name }}]
+   path = {{ samba_share_path }}
+   browseable = {{ 'yes' if samba_share_browseable else 'no' }}
+   read only = {{ 'yes' if samba_share_read_only else 'no' }}
+   guest ok = {{ 'yes' if samba_share_guest_ok else 'no' }}
+   guest only = {{ 'yes' if samba_share_guest_only else 'no' }}
+   force user = {{ samba_share_force_user }}
+   force group = {{ samba_share_force_group }}
+   create mask = {{ samba_share_create_mask }}
+   directory mask = {{ samba_share_directory_mask }}

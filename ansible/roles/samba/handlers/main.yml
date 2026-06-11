@@ -1,0 +1,11 @@
+---
+- name: Restart Samba services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: restarted
+  loop: >-
+    {{
+      [samba_service_name] +
+      ([samba_netbios_service_name] if samba_manage_nmbd | bool else [])
+    }}
+  when: not ansible_check_mode

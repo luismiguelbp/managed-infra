@@ -1,6 +1,6 @@
 ---
 - name: Docker fleet status
-  hosts: raspberry_pis
+  hosts: linux_hosts
   gather_facts: false
   vars_files:
     - ../roles/edge_stack/defaults/main.yml
@@ -36,6 +36,45 @@
       become_user: "{{ ansible_user }}"
       when: edge_stack_env_file.stat.exists
 
+    - name: Check edge stack container health
+      ansible.builtin.command: docker compose ps --format json
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: docker_compose_ps_json
+      changed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when: edge_stack_env_file.stat.exists
+
+    - name: Parse edge stack container health
+      ansible.builtin.set_fact:
+        edge_stack_ps_containers: >-
+          {{
+            docker_compose_ps_json.stdout_lines
+            | default([])
+            | reject('equalto', '')
+            | map('from_json')
+            | list
+          }}
+      when: edge_stack_env_file.stat.exists
+
+    - name: Evaluate edge stack container health
+      ansible.builtin.set_fact:
+        edge_stack_container_count: "{{ edge_stack_ps_containers | length }}"
+        edge_stack_health_failures: >-
+          {{
+            (edge_stack_ps_containers | rejectattr('State', 'equalto', 'running') | map(attribute='Service') | list)
+            + (
+              edge_stack_ps_containers
+              | selectattr('Health', 'defined')
+              | selectattr('Health', 'ne', '')
+              | rejectattr('Health', 'equalto', 'healthy')
+              | map(attribute='Service')
+              | list
+            )
+          }}
+      when: edge_stack_env_file.stat.exists
+
     - name: Check uptime
       ansible.builtin.command: uptime
       register: host_uptime
@@ -69,6 +108,23 @@
             else 'NO_EDGE_STACK'
           }}
 
+    - name: Build edge stack health text
+      ansible.builtin.set_fact:
+        edge_stack_health_text: >-
+          {{
+            'NO_EDGE_STACK'
+            if not edge_stack_env_file.stat.exists
+            else (
+              'ok'
+              if edge_stack_container_count | int > 0 and edge_stack_health_failures | length == 0
+              else (
+                'no containers running'
+                if edge_stack_container_count | int == 0
+                else 'failed: ' + (edge_stack_health_failures | unique | join(', '))
+              )
+            )
+          }}
+
     - name: Print host status summary
       ansible.builtin.debug:
         msg:
@@ -76,6 +132,18 @@
           - "docker_service={{ docker_service_status.stdout | default('unknown') }}"
           - "compose_version={{ docker_compose_version_text }}"
           - "compose_ps={{ docker_compose_ps_text }}"
+          - "edge_stack_health={{ edge_stack_health_text }}"
           - "uptime={{ host_uptime.stdout }}"
           - "root_disk={{ root_disk_usage.stdout | default('unknown') }}"
           - "edge_stack_disk={{ edge_stack_disk_usage.stdout | default('unknown') }}"
+
+    - name: Assert edge stack containers are healthy
+      ansible.builtin.assert:
+        that:
+          - edge_stack_container_count | int > 0
+          - edge_stack_health_failures | length == 0
+        fail_msg: >-
+          Edge stack health check failed on {{ inventory_hostname }}:
+          {{ 'no containers running' if edge_stack_container_count | int == 0
+             else 'unhealthy or not running: ' + (edge_stack_health_failures | unique | join(', ')) }}
+      when: edge_stack_env_file.stat.exists

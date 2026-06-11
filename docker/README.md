@@ -1,13 +1,14 @@
 # Edge stack (Docker Compose)
 
-Mosquitto and Node-RED on MQTT edge nodes; Grafana and PostgreSQL on the metrics node (`edge-node-3` / site-c). Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
+Node-RED and Mosquitto on MQTT edge nodes; Portainer, PostgreSQL, and Grafana on full-stack or metrics nodes. Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
 
 ## Services
 
 | Service | Port | Hosts | Purpose |
 |---------|------|-------|---------|
-| Mosquitto | 1883, 8883, 9001 | edge-node-1, edge-node-2 | MQTT broker (9001 = WebSockets) |
+| Portainer | 9443 | edge-node-1 | Docker management UI |
 | Node-RED | 1880 | edge-node-1, edge-node-2 | Flow editor and runtime |
+| Mosquitto | 1883, 8883, 9001 | edge-node-1, edge-node-2 | MQTT broker (9001 = WebSockets) |
 | PostgreSQL | 5432 | edge-node-1, edge-node-3 | Database (Grafana backend) |
 | Grafana | 3000 | edge-node-1, edge-node-3 | Dashboards |
 
@@ -23,8 +24,9 @@ docker/
 ├── env.example
 ├── .env                      # gitignored; copied to Pi when present
 └── data/
-    ├── mosquitto/config/     # mosquitto.conf, passwords_file (manual)
-    └── node-red/data/        # settings.js starter
+    ├── portainer/            # Portainer state
+    ├── node-red/data/        # settings.js starter
+    └── mosquitto/config/     # mosquitto.conf, passwords_file (manual)
 ```
 
 ## Credentials
@@ -75,8 +77,9 @@ Containers start only when `/opt/docker/.env` exists. Ansible does not overwrite
 
 | Service | Image |
 |---------|-------|
-| Mosquitto | `eclipse-mosquitto:latest` |
+| Portainer | `portainer/portainer-ce:latest` |
 | Node-RED | `nodered/node-red:latest` |
+| Mosquitto | `eclipse-mosquitto:latest` |
 | PostgreSQL | `postgres:16-alpine` |
 | Grafana | `grafana/grafana:latest` |
 
