@@ -2,7 +2,7 @@
 location: site-a
 dns_name: edge-node-1.example.lan
 role: edge
-hardware_model: Raspberry Pi 3 B+
+hardware_model: MiniPC Intel/AMD 64-bit with Debian 13.5 x86_64 amd64
 
 # Full stack (lab / template host with every service).
 edge_stack_compose_files:
