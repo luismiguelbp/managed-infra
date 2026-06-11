@@ -346,7 +346,7 @@ Ansible deploys `env.example`. When `docker/.env` exists on the control machine 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `firewall_enabled` | `true` | Enable UFW |
-| `firewall_trusted_cidrs` | RFC1918 ranges | Sources allowed to reach MQTT and Node-RED |
+| `firewall_trusted_cidrs` | RFC1918 ranges | Sources allowed to reach trusted service ports |
 | `firewall_edge_ports` | `1880`, `1883` | Edge stack ports |
 | `firewall_samba_enabled` | `samba_enabled` | Toggle SMB firewall rules |
 | `firewall_samba_ports` | `445` | Samba SMB ports |
