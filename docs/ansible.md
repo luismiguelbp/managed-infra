@@ -117,6 +117,7 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP_DEST` |
 | `bin/infra-restore-edge-stack` | Push backup mirror to one host (`--limit` required) |
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
+| `bin/infra-configure-samba` | Configure Samba public share and SMB firewall (`--tags firewall,samba`) |
 | `bin/infra-reboot` | Reboot all Pis (`common` role, `--tags reboot`) |
 
 Task helpers accept the same extra flags as Ansible (`--check`, `--limit`, `-e`, etc.).
@@ -249,6 +250,24 @@ Dry run:
 ./bin/infra-deploy-edge-stack --check
 ```
 
+**Configure Samba public share only:**
+
+```bash
+./bin/infra-configure-samba
+```
+
+One host:
+
+```bash
+./bin/infra-configure-samba --limit edge-node-1
+```
+
+Dry run:
+
+```bash
+./bin/infra-configure-samba --limit edge-node-1 --check
+```
+
 **Install packages:**
 
 ```bash
@@ -277,6 +296,7 @@ Package roles:
 | `tools` | Admin utilities (git, htop, mc) | `ansible/roles/tools/defaults/main.yml` |
 | `packages` | Meta-role; includes both (for reuse outside `site.yml`) | `ansible/roles/packages/tasks/main.yml` |
 | `firewall` | UFW rules for SSH and edge stack ports | `ansible/roles/firewall/defaults/main.yml` |
+| `samba` | Anonymous public SMB share at `/srv/samba/public` | `ansible/roles/samba/defaults/main.yml` |
 | `edge_stack` | Deploy Compose edge stack per host profile | `ansible/roles/edge_stack/defaults/main.yml` |
 
 Compose files live in `docker/` at the repo root. The role copies them to `/opt/docker` on each Pi.
@@ -328,8 +348,33 @@ Ansible deploys `env.example`. When `docker/.env` exists on the control machine 
 | `firewall_enabled` | `true` | Enable UFW |
 | `firewall_trusted_cidrs` | RFC1918 ranges | Sources allowed to reach MQTT and Node-RED |
 | `firewall_edge_ports` | `1880`, `1883` | Edge stack ports |
+| `firewall_samba_enabled` | `samba_enabled` | Toggle SMB firewall rules |
+| `firewall_samba_ports` | `445` | Samba SMB ports |
 
 Restrict further per site with `host_vars` if needed (for example a single `/24`).
+
+### Samba public share
+
+The `samba` role configures a guest read-write share on active hosts using inventory defaults from `group_vars/linux_hosts.yml`:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `samba_enabled` | `false` (role default) | Enable Samba role |
+| `samba_share_name` | `public` | Share name for SMB clients |
+| `samba_share_path` | `/srv/samba/public` | Shared directory path |
+| `samba_share_directory_mode` | `"0777"` | World read-write permissions for anonymous access |
+
+Guest mode is intentionally open to trusted LAN clients only. Keep `firewall_trusted_cidrs` restricted to your internal networks and do not expose SMB to the public internet.
+
+Mount examples:
+
+```bash
+# macOS
+mount -t smbfs //guest@edge-node-1.example.lan/public /tmp/samba-public
+
+# Linux
+sudo mount -t cifs //edge-node-1.example.lan/public /mnt/samba-public -o guest,uid=$(id -u),gid=$(id -g)
+```
 
 ### Mosquitto migration
 

@@ -12,5 +12,8 @@
       tags: [docker]
     - role: firewall
       tags: [firewall]
+    - role: samba
+      tags: [samba]
+      when: samba_enabled | bool
     - role: edge_stack
       tags: [edge_stack]

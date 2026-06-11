@@ -1,14 +1,14 @@
 ---
-ansible_user: user
-#ansible_python_interpreter: /usr/bin/python3
+#ansible_user:
+ansible_python_interpreter: /usr/bin/python3
 
 # Manage UFW on fleet hosts (SSH + edge stack ports from trusted CIDRs).
-firewall_enabled: true
+firewall_enabled: false
 
 # Enable anonymous public Samba share on active fleet hosts.
-samba_enabled: true
+samba_enabled: false
 samba_share_name: public
 samba_share_path: /srv/samba/public
 
 # Set to true to reboot after apt upgrade when /var/run/reboot-required exists.
-#reboot_after_upgrade: false
+reboot_after_upgrade: false

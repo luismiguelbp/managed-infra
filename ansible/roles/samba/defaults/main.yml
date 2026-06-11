@@ -1,0 +1,26 @@
+---
+samba_enabled: false
+
+samba_package_name: samba
+samba_service_name: smbd
+samba_netbios_service_name: nmbd
+samba_manage_nmbd: false
+
+samba_config_path: /etc/samba/smb.conf
+samba_server_min_protocol: SMB2
+samba_map_to_guest: "Bad User"
+
+samba_share_name: public
+samba_share_path: /srv/samba/public
+samba_share_root: /srv/samba
+
+samba_share_root_mode: "0755"
+samba_share_directory_mode: "0777"
+samba_share_browseable: true
+samba_share_guest_ok: true
+samba_share_guest_only: true
+samba_share_read_only: false
+samba_share_force_user: nobody
+samba_share_force_group: nogroup
+samba_share_create_mask: "0666"
+samba_share_directory_mask: "0777"

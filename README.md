@@ -53,6 +53,7 @@ pytest
 ./bin/infra-bootstrap --check
 ./bin/infra-bootstrap
 ./bin/infra-deploy-edge-stack
+./bin/infra-configure-samba
 ./bin/infra-docker-status
 ./bin/infra-backup-edge-stack
 ```

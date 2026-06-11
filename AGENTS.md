@@ -64,6 +64,7 @@ pytest
 | Connectivity check | `./bin/infra-ping` |
 | Full fleet provisioning | `./bin/infra-bootstrap` |
 | Edge stack only | `./bin/infra-deploy-edge-stack` |
+| Configure Samba public share | `./bin/infra-configure-samba` |
 | Docker and system status | `./bin/infra-docker-status` |
 | Backup edge stack data | `./bin/infra-backup-edge-stack` |
 | Restore backup mirror to one host | `./bin/infra-restore-edge-stack` |

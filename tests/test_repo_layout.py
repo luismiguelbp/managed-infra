@@ -67,6 +67,22 @@ def test_infra_restore_script_and_playbook_exist() -> None:
     assert playbook.is_file()
 
 
+def test_infra_configure_samba_script_and_role_files_exist() -> None:
+    """Samba wrapper and role files are present for public SMB share setup."""
+    script = PROJECT_ROOT / "bin" / "infra-configure-samba"
+    defaults_file = PROJECT_ROOT / "ansible" / "roles" / "samba" / "defaults" / "main.yml"
+    tasks_file = PROJECT_ROOT / "ansible" / "roles" / "samba" / "tasks" / "main.yml"
+    template_file = PROJECT_ROOT / "ansible" / "roles" / "samba" / "templates" / "smb.conf.j2"
+    handlers_file = PROJECT_ROOT / "ansible" / "roles" / "samba" / "handlers" / "main.yml"
+
+    assert script.is_file()
+    assert script.stat().st_mode & 0o111
+    assert defaults_file.is_file()
+    assert tasks_file.is_file()
+    assert template_file.is_file()
+    assert handlers_file.is_file()
+
+
 def test_env_example_includes_backup_destination_var() -> None:
     """.env.example documents backup destination path for mirrors."""
     env_example = (PROJECT_ROOT / ".env.example").read_text()
