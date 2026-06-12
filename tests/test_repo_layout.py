@@ -1,5 +1,7 @@
 """Structural tests for repository layout and Ansible/Docker alignment."""
 
+import yaml
+
 from contract_helpers import (
     DOCKER_DIR,
     MANUAL_EDGE_STACK_DATA_FILES,
@@ -87,3 +89,23 @@ def test_env_example_includes_backup_destination_var() -> None:
     """.env.example documents backup destination path for mirrors."""
     env_example = (PROJECT_ROOT / ".env.example").read_text()
     assert "MANAGED_INFRA_BACKUP_DEST=" in env_example
+
+
+def test_edge_stack_utility_playbooks_preserve_inventory_precedence() -> None:
+    """Utility playbooks must not load role defaults as play vars."""
+    playbooks = [
+        PROJECT_ROOT / "ansible" / "playbooks" / "docker-status.yml",
+        PROJECT_ROOT / "ansible" / "playbooks" / "edge-stack-backup.yml",
+        PROJECT_ROOT / "ansible" / "playbooks" / "edge-stack-restore.yml",
+    ]
+
+    for playbook in playbooks:
+        play = yaml.safe_load(playbook.read_text())[0]
+        assert "vars_files" not in play, playbook.name
+
+        pre_tasks = play.get("pre_tasks", [])
+        assert any(
+            task.get("ansible.builtin.include_vars", {}).get("name")
+            == "edge_stack_role_defaults"
+            for task in pre_tasks
+        ), playbook.name
