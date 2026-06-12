@@ -2,8 +2,16 @@
 - name: Docker fleet status
   hosts: linux_hosts
   gather_facts: false
-  vars_files:
-    - ../roles/edge_stack/defaults/main.yml
+  pre_tasks:
+    - name: Load edge stack role defaults
+      ansible.builtin.include_vars:
+        file: ../roles/edge_stack/defaults/main.yml
+        name: edge_stack_role_defaults
+
+    - name: Apply edge stack path default when inventory omits it
+      ansible.builtin.set_fact:
+        edge_stack_path: "{{ edge_stack_role_defaults.edge_stack_path }}"
+      when: edge_stack_path is not defined
   tasks:
     - name: Check whether edge stack environment file exists
       ansible.builtin.stat:

@@ -2,8 +2,6 @@
 - name: Restore edge stack data from control machine backup mirror
   hosts: linux_hosts
   gather_facts: false
-  vars_files:
-    - ../roles/edge_stack/defaults/main.yml
   vars:
     # Backup folder name under MANAGED_INFRA_BACKUP_DEST (defaults to --limit host).
     edge_stack_restore_source: "{{ inventory_hostname }}"
@@ -32,6 +30,41 @@
       mosquitto: compose-mosquitto.yml
       postgresql: compose-postgresql.yml
       grafana: compose-grafana.yml
+  pre_tasks:
+    - name: Load edge stack role defaults
+      ansible.builtin.include_vars:
+        file: ../roles/edge_stack/defaults/main.yml
+        name: edge_stack_role_defaults
+
+    - name: Apply edge stack path default when inventory omits it
+      ansible.builtin.set_fact:
+        edge_stack_path: "{{ edge_stack_role_defaults.edge_stack_path }}"
+      when: edge_stack_path is not defined
+
+    - name: Apply edge stack compose defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_compose_files: "{{ edge_stack_role_defaults.edge_stack_compose_files }}"
+      when: edge_stack_compose_files is not defined
+
+    - name: Apply edge stack project name default when inventory omits it
+      ansible.builtin.set_fact:
+        edge_stack_project_name: "{{ edge_stack_role_defaults.edge_stack_project_name }}"
+      when: edge_stack_project_name is not defined
+
+    - name: Apply edge stack Mosquitto UID default when inventory omits it
+      ansible.builtin.set_fact:
+        edge_stack_mosquitto_uid: "{{ edge_stack_role_defaults.edge_stack_mosquitto_uid }}"
+      when: edge_stack_mosquitto_uid is not defined
+
+    - name: Apply edge stack Mosquitto GID default when inventory omits it
+      ansible.builtin.set_fact:
+        edge_stack_mosquitto_gid: "{{ edge_stack_role_defaults.edge_stack_mosquitto_gid }}"
+      when: edge_stack_mosquitto_gid is not defined
+
+    - name: Build edge stack compose file value
+      ansible.builtin.set_fact:
+        edge_stack_compose_file_var: "{{ edge_stack_compose_files | join(',') }}"
+      when: edge_stack_compose_file_var is not defined
   tasks:
     - name: Load backup manifest
       ansible.builtin.slurp:

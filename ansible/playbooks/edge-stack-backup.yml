@@ -2,8 +2,6 @@
 - name: Backup edge stack data to control machine
   hosts: linux_hosts
   gather_facts: false
-  vars_files:
-    - ../roles/edge_stack/defaults/main.yml
   vars:
     # Set -e edge_stack_backup_stop_grafana=true for a consistent Grafana mirror (brief downtime).
     edge_stack_backup_stop_grafana: false
@@ -21,6 +19,21 @@
     local_node_red_dir: "{{ host_backup_data_root }}/node-red"
     local_grafana_dir: "{{ host_backup_data_root }}/grafana"
     local_postgresql_dump: "{{ host_backup_dumps_root }}/postgresql.sql"
+  pre_tasks:
+    - name: Load edge stack role defaults
+      ansible.builtin.include_vars:
+        file: ../roles/edge_stack/defaults/main.yml
+        name: edge_stack_role_defaults
+
+    - name: Apply edge stack role defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_path: "{{ edge_stack_role_defaults.edge_stack_path }}"
+      when: edge_stack_path is not defined
+
+    - name: Apply edge stack compose defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_compose_files: "{{ edge_stack_role_defaults.edge_stack_compose_files }}"
+      when: edge_stack_compose_files is not defined
   tasks:
     - name: Ensure host backup directory exists
       ansible.builtin.file:
